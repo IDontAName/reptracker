@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basgiath Honor Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0c0b10;--ink2:#14121b;--panel:#1b1825;--panel2:#221e2e;
+  --edge:#352f45;--edge2:#4a4060;
+  --gold:#c9a24b;--gold-dim:#8a7232;--parch:#e8dcc0;--parch-dim:#b6a888;
+  --blood:#9e2b2b;--blood-bright:#c8413f;
+  --pos:#4f9d6b;--pos-bright:#6fcf91;--neutral:#6b6478;
+  --txt:#e8dcc0;--txt-dim:#9d9482;--txt-faint:#6f6a5e;
+  --rad:4px;--shadow:0 10px 40px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'EB Garamond',Georgia,serif;color:var(--txt);background:#0a0910;min-height:100%;overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Cinzel',serif;letter-spacing:.02em}
+button{font-family:inherit;cursor:pointer;color:inherit;background:none;border:none}
+input,select,textarea{font-family:inherit}
+::selection{background:var(--gold-dim);color:#0a0910}
+
+/* login */
+#loginScreen{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 30%,#221c33 0%,#0a0910 70%)}
+.login-card{width:min(420px,92%);background:linear-gradient(180deg,rgba(27,24,37,.97),rgba(12,11,16,.98));
+  border:1px solid var(--edge2);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.75),0 0 0 1px rgba(201,162,75,.08);padding:40px 34px 32px}
+.login-logo{text-align:center;margin-bottom:22px}
+.login-logo h1{font-size:1.4rem;color:var(--gold);font-weight:600;line-height:1.2}
+.login-logo p{color:var(--txt-faint);font-size:.85rem;font-style:italic;margin-top:5px;letter-spacing:.06em}
+.lfield{margin-bottom:15px}
+.lfield label,.ffield label{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.18em;color:var(--gold-dim);margin-bottom:6px;font-family:'Cinzel',serif}
+.lfield select,.lfield input{width:100%;padding:11px 13px;background:rgba(12,11,16,.9);color:var(--txt);border:1px solid var(--edge);border-radius:var(--rad);font-size:1rem}
+.lfield select:focus,.lfield input:focus{outline:none;border-color:var(--gold-dim)}
+.btn-primary{width:100%;margin-top:6px;padding:13px;background:linear-gradient(180deg,var(--gold),var(--gold-dim));color:#1a1510;
+  font-family:'Cinzel',serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.8rem;border-radius:var(--rad)}
+.btn-primary:hover{filter:brightness(1.1)}
+.login-err{color:var(--blood-bright);text-align:center;font-size:.9rem;margin-top:12px;min-height:1.1em}
+
+/* shell */
+#app{display:none;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(20,18,27,.97),rgba(20,18,27,.88));
+  border-bottom:1px solid var(--edge);padding:0 16px;display:flex;align-items:center;min-height:54px;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:.95rem;color:var(--gold);font-weight:600;white-space:nowrap}
+.brand small{display:block;color:var(--gold-dim);font-size:.52rem;letter-spacing:.18em;text-transform:uppercase;margin-top:2px;font-family:'Cinzel',serif}
+.topbar-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;padding:7px 0}
+.whoami{font-size:.85rem;color:var(--txt-dim);white-space:nowrap;margin-right:4px}
+.whoami b{color:var(--parch);font-weight:600}
+.badge-dm{display:inline-block;margin-left:5px;font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;background:var(--blood);color:#fff;padding:2px 5px;border-radius:3px;font-family:'Cinzel',serif;vertical-align:middle}
+.topbtn{font-size:.64rem;text-transform:uppercase;letter-spacing:.09em;font-family:'Cinzel',serif;color:var(--txt-dim);border:1px solid var(--edge);padding:6px 11px;border-radius:var(--rad);white-space:nowrap}
+.topbtn:hover{color:var(--parch);border-color:var(--gold-dim)}
+select.topbtn{background:var(--ink2);padding:5px 8px}
+.preview-banner{display:none;background:rgba(201,162,75,.12);border-bottom:1px solid var(--gold-dim);color:var(--gold);padding:7px 16px;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;align-items:center;gap:10px}
+.preview-banner.on{display:flex}
+
+.controls{position:sticky;top:54px;z-index:15;padding:10px 16px;background:linear-gradient(180deg,rgba(12,11,16,.95),rgba(12,11,16,.7));
+  border-bottom:1px solid var(--edge);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.search{flex:1;min-width:180px;position:relative}
+.search input{width:100%;padding:8px 11px 8px 32px;background:var(--ink2);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.95rem}
+.search input:focus{outline:none;border-color:var(--gold-dim)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.42}
+.ctl{display:flex;align-items:center;gap:5px}
+.ctl label{font-size:.6rem;text-transform:uppercase;letter-spacing:.11em;color:var(--gold-dim);font-family:'Cinzel',serif}
+.ctl select{padding:6px 8px;background:var(--ink2);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.88rem;max-width:200px}
+.chip{font-size:.68rem;padding:5px 10px;border:1px solid var(--edge);border-radius:20px;color:var(--txt-dim)}
+.chip:hover{border-color:var(--gold-dim);color:var(--parch)}
+.chip.on{background:var(--blood);border-color:var(--blood);color:#fff}
+.count{font-size:.75rem;color:var(--txt-faint);font-style:italic;margin-left:auto}
+
+.layout{display:flex;align-items:flex-start}
+.main-col{flex:1;min-width:0}
+.main{padding:18px 16px 80px}
+.grp{margin-bottom:28px}
+.grp-head{display:flex;align-items:center;gap:11px;margin:0 0 4px}
+.grp-head h2{font-size:1.2rem;color:var(--gold);font-weight:600}
+.grp-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--gold-dim),transparent)}
+.grp-head .gcount{font-size:.7rem;color:var(--txt-faint);font-style:italic}
+.subgrp{margin-top:13px}
+.subgrp-head{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--parch-dim);margin:0 0 8px;padding-bottom:4px;border-bottom:1px dashed var(--edge)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);padding:11px 13px 12px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .18s,transform .12s,box-shadow .18s;text-align:left;width:100%}
+.card:hover{border-color:var(--gold-dim);transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.4)}
+.card:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.card.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim),0 8px 22px rgba(0,0,0,.4)}
+.card.dead{filter:grayscale(.55) brightness(.82)}
+.card.dead::after{content:"DECEASED";position:absolute;top:10px;right:-28px;transform:rotate(38deg);background:var(--blood);color:#fff;font-family:'Cinzel',serif;font-size:.48rem;letter-spacing:.14em;padding:2px 30px}
+.card .nm{font-family:'Cinzel',serif;font-size:.96rem;color:var(--parch);font-weight:600;line-height:1.15;padding-right:14px}
+.card .role{font-size:.82rem;color:var(--txt-dim);margin-top:2px;font-style:italic}
+.card .pos{font-size:.7rem;color:var(--txt-faint);margin-top:2px}
+.card .dmn{position:absolute;top:8px;right:10px;color:var(--gold-dim);font-size:.7rem}
+.rep{margin-top:9px}
+.rep-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.rep-lbl{font-size:.56rem;text-transform:uppercase;letter-spacing:.11em;color:var(--gold-dim);font-family:'Cinzel',serif}
+.rep-val{font-family:'Cinzel',serif;font-size:.86rem;font-weight:600}
+.rep-shell{position:relative}
+.rep-track{position:relative;height:9px;background:var(--ink);border:1px solid var(--edge);border-radius:6px;overflow:hidden}
+.rep-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--edge2);z-index:2}
+.rep-fill{position:absolute;top:0;bottom:0;transition:left .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1)}
+.rep-fill.p{background:linear-gradient(90deg,var(--pos),var(--pos-bright))}
+.rep-fill.n{background:linear-gradient(90deg,var(--blood-bright),var(--blood))}
+.rep-dot{position:absolute;top:4.5px;width:13px;height:13px;border-radius:50%;background:var(--parch);border:2px solid #1a1510;box-shadow:0 0 0 1px var(--gold),0 2px 5px rgba(0,0,0,.6);transform:translate(-50%,-50%);z-index:4;transition:left .5s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.rep-words{display:flex;justify-content:space-between;margin-top:3px}
+.rep-words span{font-size:.53rem;color:var(--txt-faint)}
+.empty{padding:60px 20px;text-align:center;color:var(--txt-faint);font-style:italic}
+
+/* side panel */
+aside.side{width:0;flex:0 0 auto;position:sticky;top:54px;height:calc(100vh - 54px);overflow:hidden;transition:width .28s cubic-bezier(.3,.8,.3,1);border-left:1px solid transparent;z-index:16}
+aside.side.open{width:370px;border-left-color:var(--edge);background:linear-gradient(180deg,var(--ink2),var(--ink))}
+.side-inner{width:370px;height:100%;overflow-y:auto;padding:22px 20px 60px;position:relative}
+.side-close{position:absolute;top:10px;right:12px;width:29px;height:29px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:var(--txt-dim);background:var(--ink2);border:1px solid var(--edge2)}
+.side-close:hover{color:var(--parch);border-color:var(--gold-dim)}
+.side-name{font-family:'Cinzel',serif;font-size:1.35rem;color:var(--parch);font-weight:700;text-align:center;line-height:1.1;padding:0 26px}
+.side-role{text-align:center;color:var(--gold-dim);font-style:italic;margin-top:3px;font-size:.92rem}
+.side-sep{height:1px;background:linear-gradient(90deg,transparent,var(--edge2),transparent);margin:14px 0}
+.detail-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dotted var(--edge);font-size:.92rem}
+.detail-row .k{color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;padding-top:3px;white-space:nowrap}
+.detail-row .v{color:var(--parch);text-align:right}
+.detail-row .v.classified{color:var(--blood-bright);font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.12em}
+.pubnote{margin-top:14px;padding:10px 12px;border:1px solid var(--gold-dim);border-left:3px solid var(--gold);border-radius:var(--rad);background:rgba(201,162,75,.06)}
+.pubnote-h{font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.13em;color:var(--gold);margin-bottom:4px}
+.pubnote-body{color:var(--parch);font-size:.92rem;line-height:1.5;white-space:pre-wrap}
+.dm-box{margin-top:14px;padding:11px;border:1px solid var(--blood);border-radius:var(--rad);background:rgba(158,43,43,.06)}
+.dm-box h4{font-size:.64rem;text-transform:uppercase;letter-spacing:.13em;color:var(--blood-bright);margin-bottom:10px}
+.pl-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dotted var(--edge)}
+.pl-name{font-size:.88rem;color:var(--parch)}
+.pl-ctrl{display:flex;align-items:center}
+.pl-step{width:26px;height:28px;background:var(--ink);border:1px solid var(--edge2);color:var(--txt-dim);font-size:.95rem}
+.pl-step:first-child{border-radius:4px 0 0 4px}.pl-step:last-child{border-radius:0 4px 4px 0}
+.pl-step:hover{background:var(--gold);color:#1a1510;border-color:var(--gold)}
+.pl-val{width:42px;height:28px;text-align:center;background:var(--ink2);border:1px solid var(--edge2);border-left:none;border-right:none;font-family:'Cinzel',serif;font-weight:600;font-size:.86rem;color:var(--parch)}
+.pl-val:focus{outline:none;background:var(--panel2)}
+.dm-actions{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+.mini-btn{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;color:var(--txt-dim);border:1px solid var(--edge2);padding:5px 10px;border-radius:var(--rad);background:var(--ink)}
+.mini-btn:hover{color:var(--parch);border-color:var(--gold-dim)}
+.mini-btn.go{color:#1a1510;background:var(--gold);border-color:var(--gold)}
+.mini-btn.danger{color:var(--blood-bright);border-color:var(--blood)}
+.mini-btn.danger:hover{background:var(--blood);color:#fff}
+.saved-flag{font-size:.62rem;color:var(--txt-faint);font-style:italic;margin-top:6px;min-height:1em;text-align:right}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;z-index:60;background:rgba(6,4,14,.72);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{width:min(560px,100%);background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--edge2);border-radius:8px;box-shadow:var(--shadow);padding:22px 22px 18px}
+.modal h3{color:var(--gold);font-size:1.05rem;margin-bottom:14px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.ffield.full{grid-column:1/-1}
+.ffield label{margin-bottom:4px;font-size:.6rem}
+.ffield input,.ffield select,.ffield textarea,.inp{width:100%;padding:8px 10px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.95rem}
+.ffield textarea{min-height:90px;resize:vertical;line-height:1.45}
+.ffield input:focus,.ffield textarea:focus,.inp:focus{outline:none;border-color:var(--gold-dim)}
+.check{display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--parch-dim)}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;align-items:center}
+.modal-foot .err{margin-right:auto;color:var(--blood-bright);font-size:.85rem}
+.acct-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dotted var(--edge)}
+.acct-row .an{color:var(--parch);font-size:.95rem}
+.acct-row input{width:130px;padding:5px 8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.85rem}
+.acct-new{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;margin-top:14px}
+
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:var(--panel2);border:1px solid var(--gold-dim);color:var(--parch);padding:9px 16px;border-radius:var(--rad);font-size:.9rem;z-index:80;transition:.25s}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spinner{width:22px;height:22px;border:2px solid var(--edge2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:16px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:760px){
+  aside.side{position:fixed;top:0;right:0;height:100vh;z-index:40}
+  aside.side.open{width:100%}
+  .side-inner{width:100%}
+  .controls{top:0;position:relative}
+  .cards{grid-template-columns:1fr}
+  .fgrid{grid-template-columns:1fr}
+  .acct-row{grid-template-columns:1fr;}
+  .acct-new{grid-template-columns:1fr}
+  .count{margin-left:0;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="login-logo"><h1>Basgiath Honor Tracker</h1><p>Where you stand with the cadets of Basgiath</p></div>
+    <div class="lfield"><label for="lChar">Name</label><select id="lChar"><option value="">Loading…</option></select></div>
+    <div class="lfield"><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
+    <button class="btn-primary" type="submit" id="lBtn">Enter</button>
+    <div class="login-err" id="lErr"></div>
+  </form>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><h1>Basgiath Honor Tracker</h1><small>NPC Standing</small></div>
+    <div class="topbar-right">
+      <span class="whoami" id="whoami"></span>
+      <span id="dmTools" style="display:none;gap:6px;flex-wrap:wrap;align-items:center">
+        <select class="topbtn" id="previewSel" aria-label="Preview as player"><option value="">Preview as…</option></select>
+        <button class="topbtn" id="btnAddNpc">+ NPC</button>
+        <button class="topbtn" id="btnAccounts">Accounts</button>
+        <button class="topbtn" id="btnExport">Export</button>
+      </span>
+      <button class="topbtn" id="btnLogout">Log out</button>
+    </div>
+  </header>
+  <div class="preview-banner" id="previewBanner"><span id="previewText"></span><button class="mini-btn" id="btnExitPreview">Exit preview</button></div>
+  <div class="layout">
+    <div class="main-col">
+      <div class="controls">
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="fQ" type="search" placeholder="Search name, role, squad, signet…" aria-label="Search">
+    </div>
+    <div class="ctl"><label for="fGroup">Group</label><select id="fGroup"></select></div>
+    <div class="ctl"><label for="fSort">Sort</label><select id="fSort">
+      <option value="default">Roster</option><option value="name">Name</option>
+      <option value="rep_hi">Standing ↓</option><option value="rep_lo">Standing ↑</option></select></div>
+    <button class="chip" id="fDead">Hide deceased</button>
+    <span class="count" id="count"></span>
+  </div>
+      <main class="main" id="main"><div class="spinner"></div></main>
+    </div>
+    <aside class="side" id="side" aria-label="NPC details"><div class="side-inner" id="sideInner"></div></aside>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div id="toast" role="status"></div>
+
+<script>
+const API="https://adqnhmmgrrptiljuvnwv.supabase.co/functions/v1/rep-api-g2";
+const PUB="sb_publishable_NaXgpmsqeHWBQale9Y1pDg_eQkDudOO";
+const TOKEN_KEY="g2_honor_token";
+let TOKEN=null,ME=null,PREVIEW=null,selectedId=null,pollTimer=null;
+const STATE={npcs:[],scores:{}};
+const F={q:"",group:"",sort:"default",hideDead:false};
+const $=id=>document.getElementById(id);
+
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg,ms=2400){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),ms);}
+
+async function api(action,body={}){
+  const h={"Content-Type":"application/json","apikey":PUB,"Authorization":"Bearer "+PUB};
+  if(TOKEN)h["x-session-token"]=TOKEN;
+  const res=await fetch(API,{method:"POST",headers:h,body:JSON.stringify({action,...body})});
+  let d={};try{d=await res.json();}catch(e){}
+  if(res.status===401&&action!=="login"){logoutLocal();throw new Error("Session expired — please log in again");}
+  if(!res.ok)throw new Error(d.error||("HTTP "+res.status));
+  return d;
+}
+
+/* ---------- login ---------- */
+async function loadCharacters(){
+  try{
+    const r=await api("list_characters");
+    const sel=$("lChar");
+    const list=(r.characters||[]).slice().sort((a,b)=>(b.is_dm-a.is_dm)||a.character_name.localeCompare(b.character_name));
+    sel.innerHTML='<option value="">Choose…</option>'+list.map(c=>`<option value="${esc(c.character_name)}">${esc(c.character_name)}</option>`).join("");
+    const last=lsGet("g2_last_char");if(last)sel.value=last;
+  }catch(e){$("lErr").textContent="Can't reach the server: "+e.message;}
+}
+$("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("lChar").value,pw=$("lPass").value;
+  if(!name){$("lErr").textContent="Choose your name";return;}
+  $("lBtn").disabled=true;$("lErr").textContent="";
+  try{
+    const r=await api("login",{character_name:name,password:pw});
+    TOKEN=r.token;lsSet(TOKEN_KEY,TOKEN);lsSet("g2_last_char",name);
+    ME={character_name:r.character_name,is_dm:r.is_dm};
+    $("lPass").value="";enterApp();
+  }catch(err){$("lErr").textContent=err.message;}
+  $("lBtn").disabled=false;
+});
+function logoutLocal(){
+  TOKEN=null;ME=null;PREVIEW=null;lsSet(TOKEN_KEY,null);stopPolling();closeSide();
+  $("app").style.display="none";$("loginScreen").style.display="flex";
+}
+$("btnLogout").onclick=async()=>{try{await api("logout");}catch(e){}logoutLocal();};
+
+async function enterApp(){
+  $("loginScreen").style.display="none";$("app").style.display="block";
+  $("whoami").innerHTML=`<b>${esc(ME.character_name)}</b>${ME.is_dm?'<span class="badge-dm">DM</span>':''}`;
+  $("dmTools").style.display=ME.is_dm?"inline-flex":"none";
+  if(ME.is_dm)loadPreviewList();
+  await refreshState();
+}
+async function boot(){
+  TOKEN=lsGet(TOKEN_KEY);
+  if(TOKEN){
+    try{const r=await api("me");ME=r;enterApp();return;}catch(e){TOKEN=null;lsSet(TOKEN_KEY,null);}
+  }
+  $("loginScreen").style.display="flex";loadCharacters();
+}
+
+/* ---------- state ---------- */
+const viewingAsDM=()=>ME&&ME.is_dm&&!PREVIEW;
+async function refreshState(){
+  try{
+    const r=PREVIEW?await api("preview_as_player",{target_account_id:PREVIEW.id}):await api("get_state");
+    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};
+    buildGroupFilter();render();
+    if(selectedId)openSide(selectedId);
+    if(!ME.is_dm)startPolling();
+  }catch(e){$("main").innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+async function pollScores(){
+  if(!TOKEN||ME.is_dm)return;
+  try{
+    const r=await api("poll_scores");const s=r.scores||{};
+    const changed=Object.keys({...s,...STATE.scores}).some(k=>s[k]!==STATE.scores[k]);
+    if(changed){STATE.scores=s;render();if(selectedId)openSide(selectedId);}
+  }catch(e){}
+}
+function startPolling(){stopPolling();pollTimer=setInterval(pollScores,8000);}
+function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
+
+/* ---------- helpers ---------- */
+const repOf=id=>STATE.scores[id]??0;
+function repColor(v){return v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"var(--neutral)";}
+function repWord(v){if(v>=15)return"Devoted";if(v>=8)return"Trusted";if(v>=3)return"Friendly";if(v>-3)return"Neutral";if(v>-8)return"Wary";if(v>-15)return"Hostile";return"Nemesis";}
+function repBar(v){
+  const pct=Math.abs(v)/20*50,cls=v>=0?"p":"n",left=v>=0?50:50-pct,dot=(v+20)/40*100;
+  return `<div class="rep-shell"><div class="rep-track"><div class="rep-mid"></div><div class="rep-fill ${cls}" style="left:${left}%;width:${pct}%"></div></div><div class="rep-dot" style="left:${dot}%"></div></div>`;
+}
+function repBlock(v,extra=""){
+  return `<div class="rep"${extra}><div class="rep-top"><span class="rep-lbl">Standing</span><span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>${repBar(v)}<div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div></div>`;
+}
+function ordinal(n){n=parseInt(n);if(isNaN(n))return null;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+function posText(n){
+  if(!n.wing)return n.subgroup||"";
+  const bits=[];
+  if(n.squad)bits.push(n.squad+" Squad");
+  if(n.section==="Leadership")bits.push("Leadership");else if(n.section)bits.push(n.section+" Section");
+  bits.push(ordinal(n.wing)+" Wing");
+  return bits.join(" · ");
+}
+function buildGroupFilter(){
+  const groups=[...new Set(STATE.npcs.map(n=>n.grp||"Unaffiliated"))];
+  const sel=$("fGroup"),cur=sel.value;
+  sel.innerHTML='<option value="">All</option>'+groups.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join("");
+  if(groups.includes(cur))sel.value=cur;
+}
+function filtered(){
+  let list=STATE.npcs.slice();
+  if(F.group)list=list.filter(n=>(n.grp||"Unaffiliated")===F.group);
+  if(F.hideDead)list=list.filter(n=>!n.deceased);
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.year&&("year "+n.year)].some(v=>v&&String(v).toLowerCase().includes(q)));}
+  if(F.sort==="name")list.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(F.sort==="rep_hi")list.sort((a,b)=>repOf(b.id)-repOf(a.id)||a.sort_order-b.sort_order);
+  else if(F.sort==="rep_lo")list.sort((a,b)=>repOf(a.id)-repOf(b.id)||a.sort_order-b.sort_order);
+  else list.sort((a,b)=>(a.sort_order??1e9)-(b.sort_order??1e9));
+  return list;
+}
+
+/* ---------- render ---------- */
+function cardHTML(n,showPos){
+  const v=repOf(n.id),pos=showPos?posText(n):"";
+  return `<div class="card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}" role="button" tabindex="0">
+    ${viewingAsDM()&&n.public_note?'<span class="dmn" title="Has a note from the DM">✎</span>':''}
+    <div class="nm">${esc(n.name)}</div>${n.role?`<div class="role">${esc(n.role)}</div>`:''}
+    ${pos?`<div class="pos">${esc(pos)}</div>`:''}
+    ${repBlock(v)}</div>`;
+}
+function render(){
+  const list=filtered(),main=$("main");
+  $("count").textContent=`${list.length} of ${STATE.npcs.length} NPCs`;
+  if(!list.length){main.innerHTML=`<div class="empty">No NPCs match your search.</div>`;return;}
+  if(F.sort!=="default"){
+    const label={name:"Name (A–Z)",rep_hi:"Standing (high → low)",rep_lo:"Standing (low → high)"}[F.sort];
+    main.innerHTML=`<section class="grp"><div class="grp-head"><h2>${esc(label)}</h2><div class="rule"></div><span class="gcount">${list.length}</span></div><div class="cards">${list.map(n=>cardHTML(n,true)).join("")}</div></section>`;
+  }else{
+    const groups=[],gmap={};
+    for(const n of list){
+      const g=n.grp||"Unaffiliated";
+      if(!gmap[g]){gmap[g]={name:g,subs:{},order:[]};groups.push(gmap[g]);}
+      const sg=n.subgroup||"";
+      if(!gmap[g].subs[sg]){gmap[g].subs[sg]=[];gmap[g].order.push(sg);}
+      gmap[g].subs[sg].push(n);
+    }
+    main.innerHTML=groups.map(g=>{
+      const total=g.order.reduce((s,k)=>s+g.subs[k].length,0);
+      return `<section class="grp"><div class="grp-head"><h2>${esc(g.name)}</h2><div class="rule"></div><span class="gcount">${total}</span></div>`+
+        g.order.map(sg=>`<div class="subgrp">${sg?`<div class="subgrp-head">${esc(sg)}</div>`:''}<div class="cards">${g.subs[sg].map(n=>cardHTML(n,false)).join("")}</div></div>`).join("")+`</section>`;
+    }).join("");
+  }
+  main.querySelectorAll(".card").forEach(c=>{c.addEventListener("click",()=>openSide(c.dataset.id));c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openSide(c.dataset.id);}});});
+}
+$("fQ").addEventListener("input",e=>{F.q=e.target.value.trim();render();});
+$("fGroup").addEventListener("change",e=>{F.group=e.target.value;render();});
+$("fSort").addEventListener("change",e=>{F.sort=e.target.value;render();});
+$("fDead").addEventListener("click",e=>{F.hideDead=!F.hideDead;e.target.classList.toggle("on",F.hideDead);render();});
+
+/* ---------- side panel ---------- */
+function openSide(id){
+  const n=STATE.npcs.find(x=>x.id===id);if(!n){closeSide();return;}
+  selectedId=id;
+  document.querySelectorAll(".card").forEach(c=>c.classList.toggle("sel",c.dataset.id===id));
+  const v=repOf(id),rows=[];
+  const pos=posText(n);if(pos&&n.wing)rows.push(["Position",pos]);
+  if(n.year)rows.push(["Year",n.year]);
+  if(n.signet)rows.push(["Signet",n.signet]);
+  if(n.second_signet)rows.push(["Second Signet",n.second_signet]);
+  rows.push(["Status",n.deceased?"Deceased":"Active"]);
+  let html=`<button class="side-close" id="sideClose" aria-label="Close">×</button>
+    <div class="side-name">${esc(n.name)}</div>${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
+    <div style="max-width:270px;margin:14px auto 0">${repBlock(v)}</div>
+    <div class="side-sep"></div>
+    ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':''}">${esc(r[1])}</span></div>`).join("")}
+    ${n.public_note?`<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`:''}`;
+  if(viewingAsDM())html+=dmBoxHTML(n);
+  $("sideInner").innerHTML=html;
+  $("side").classList.add("open");
+  $("sideClose").onclick=closeSide;
+  if(viewingAsDM())wireDmBox(n);
+}
+function closeSide(){$("side").classList.remove("open");selectedId=null;document.querySelectorAll(".card.sel").forEach(c=>c.classList.remove("sel"));}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("modalBg").classList.contains("open"))closeModal();else closeSide();}});
+
+/* ---------- DM: per-player standing ---------- */
+function dmBoxHTML(n){
+  return `<div class="dm-box"><h4>DM · Per-Player Standing</h4>
+    <div id="dmPlayers"><div class="spinner"></div></div>
+    <div class="saved-flag" id="dmSaved"></div>
+    <div class="dm-actions">
+      <button class="mini-btn" id="dmEdit">Edit NPC / Note</button>
+      <button class="mini-btn" id="dmDead">${n.deceased?"Mark Alive":"Mark Deceased"}</button>
+      <button class="mini-btn danger" id="dmDelete">Delete</button>
+    </div></div>`;
+}
+async function wireDmBox(n){
+  $("dmEdit").onclick=()=>openEditor(n);
+  $("dmDead").onclick=async()=>{
+    try{await api("upsert_npc",{npc:{id:n.id,deceased:!n.deceased}});n.deceased=!n.deceased;n.status=n.deceased?"Deceased":"Active";render();openSide(n.id);}
+    catch(e){toast(e.message);}
+  };
+  $("dmDelete").onclick=()=>confirmModal(`Delete ${n.name}?`,"This removes the NPC and every player's standing with them. It can't be undone.","Delete",async()=>{
+    await api("delete_npc",{npc_id:n.id});STATE.npcs=STATE.npcs.filter(x=>x.id!==n.id);closeSide();buildGroupFilter();render();toast("Deleted");
+  });
+  const box=$("dmPlayers");
+  let r;try{r=await api("dm_scores_for_npc",{npc_id:n.id});}catch(e){box.textContent=e.message;return;}
+  if(selectedId!==n.id)return;
+  if(!(r.players||[]).length){box.innerHTML='<div class="empty" style="padding:10px">No player accounts yet.</div>';return;}
+  box.innerHTML=r.players.map(p=>{const v=r.scores[p.id]??0;return `<div class="pl-row" data-pid="${p.id}">
+    <span class="pl-name">${esc(p.character_name)}</span>
+    <span class="pl-ctrl"><button class="pl-step" data-d="-1" aria-label="Decrease">−</button><input class="pl-val" value="${v}" inputmode="numeric" aria-label="Standing for ${esc(p.character_name)}"><button class="pl-step" data-d="1" aria-label="Increase">+</button></span></div>`;}).join("");
+  box.querySelectorAll(".pl-row").forEach(row=>{
+    const inp=row.querySelector(".pl-val"),pid=row.dataset.pid;let t=null;
+    const save=v=>{
+      v=Math.max(-20,Math.min(20,parseInt(v)||0));inp.value=v;
+      clearTimeout(t);$("dmSaved").textContent="saving…";
+      t=setTimeout(async()=>{try{await api("set_score",{target_account_id:pid,npc_id:n.id,value:v});$("dmSaved").textContent="saved ✓";}catch(e){$("dmSaved").textContent="save failed: "+e.message;}},450);
+    };
+    row.querySelectorAll(".pl-step").forEach(b=>b.onclick=()=>save((parseInt(inp.value)||0)+parseInt(b.dataset.d)));
+    inp.addEventListener("change",()=>save(inp.value));
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();});
+  });
+}
+
+/* ---------- modals ---------- */
+function openModal(html){$("modal").innerHTML=html;$("modalBg").classList.add("open");}
+function closeModal(){$("modalBg").classList.remove("open");$("modal").innerHTML="";}
+$("modalBg").addEventListener("click",e=>{if(e.target===$("modalBg"))closeModal();});
+function confirmModal(title,body,okLabel,fn){
+  openModal(`<h3>${esc(title)}</h3><p style="color:var(--parch-dim)">${esc(body)}</p>
+    <div class="modal-foot"><span class="err" id="cErr"></span><button class="mini-btn" id="cNo">Cancel</button><button class="mini-btn danger" id="cYes">${esc(okLabel)}</button></div>`);
+  $("cNo").onclick=closeModal;
+  $("cYes").onclick=async()=>{try{await fn();closeModal();}catch(e){$("cErr").textContent=e.message;}};
+}
+
+/* NPC editor */
+function openEditor(n){
+  const isNew=!n;n=n||{grp:"Basgiath War College",deceased:false};
+  const opts=k=>[...new Set(STATE.npcs.map(x=>x[k]).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join("");
+  const f=(k,label,cls="")=>`<div class="ffield ${cls}"><label for="e_${k}">${label}</label><input id="e_${k}" value="${esc(n[k]??"")}" ${k==="grp"||k==="subgroup"||k==="signet"||k==="role"?`list="dl_${k}"`:""}></div>`;
+  openModal(`<h3>${isNew?"Add NPC":"Edit "+esc(n.name)}</h3>
+    <div class="fgrid">
+      ${f("name","Name","full")}${f("role","Role")}${f("year","Year")}
+      ${f("grp","Group")}${f("subgroup","Subgroup")}
+      <div class="ffield"><label for="e_wing">Wing</label><input id="e_wing" type="number" min="1" max="9" value="${esc(n.wing??"")}"></div>
+      ${f("section","Section")}${f("squad","Squad (e.g. 1st)")}
+      ${f("signet","Signet")}${f("second_signet","Second Signet")}
+      <div class="ffield full"><label for="e_public_note">Note from the DM (players see this)</label><textarea id="e_public_note">${esc(n.public_note??"")}</textarea></div>
+      <label class="check ffield full"><input type="checkbox" id="e_deceased" ${n.deceased?"checked":""}> Deceased</label>
+    </div>
+    <datalist id="dl_grp">${opts("grp")}</datalist><datalist id="dl_subgroup">${opts("subgroup")}</datalist>
+    <datalist id="dl_signet">${opts("signet")}</datalist><datalist id="dl_role">${opts("role")}</datalist>
+    <div class="modal-foot"><span class="err" id="eErr"></span><button class="mini-btn" id="eCancel">Cancel</button><button class="mini-btn go" id="eSave">Save</button></div>`);
+  $("eCancel").onclick=closeModal;
+  $("eSave").onclick=async()=>{
+    const v=k=>$("e_"+k).value.trim()||null;
+    const npc={name:v("name"),role:v("role"),year:v("year"),grp:v("grp"),subgroup:v("subgroup"),section:v("section"),squad:v("squad"),
+      signet:v("signet"),second_signet:v("second_signet"),public_note:v("public_note"),
+      wing:$("e_wing").value?parseInt($("e_wing").value):null,deceased:$("e_deceased").checked};
+    if(!npc.name){$("eErr").textContent="Name is required";return;}
+    if(!isNew)npc.id=n.id;
+    try{
+      const r=await api("upsert_npc",{npc});
+      closeModal();await refreshState();openSide(r.id);toast(isNew?"NPC added":"Saved");
+    }catch(e){$("eErr").textContent=e.message;}
+  };
+  setTimeout(()=>$("e_name").focus(),30);
+}
+$("btnAddNpc").onclick=()=>openEditor(null);
+
+/* accounts */
+async function openAccounts(){
+  openModal(`<h3>Accounts</h3><div id="acctList"><div class="spinner"></div></div>
+    <div class="acct-new"><input class="inp" id="naName" placeholder="New name"><input class="inp" id="naPw" placeholder="Password">
+    <label class="check"><input type="checkbox" id="naDm"> DM</label><button class="mini-btn go" id="naBtn">Create</button></div>
+    <div class="modal-foot"><span class="err" id="aErr"></span><button class="mini-btn" id="aClose">Close</button></div>`);
+  $("aClose").onclick=closeModal;
+  $("naBtn").onclick=async()=>{
+    try{await api("create_account",{character_name:$("naName").value.trim(),password:$("naPw").value,is_dm:$("naDm").checked});
+      $("naName").value="";$("naPw").value="";$("naDm").checked=false;toast("Account created");loadAcctList();loadPreviewList();}
+    catch(e){$("aErr").textContent=e.message;}
+  };
+  loadAcctList();
+}
+async function loadAcctList(){
+  const box=$("acctList");if(!box)return;
+  let r;try{r=await api("list_accounts");}catch(e){box.textContent=e.message;return;}
+  box.innerHTML=r.accounts.map(a=>`<div class="acct-row" data-id="${a.id}"><span class="an">${esc(a.character_name)}${a.is_dm?'<span class="badge-dm">DM</span>':''}</span>
+    <span><input placeholder="New password" aria-label="New password for ${esc(a.character_name)}"> <button class="mini-btn aPw">Set</button></span>
+    <button class="mini-btn danger aDel" ${a.character_name===ME.character_name?"disabled style='opacity:.35'":""}>Delete</button></div>`).join("");
+  box.querySelectorAll(".acct-row").forEach(row=>{
+    const id=row.dataset.id,name=row.querySelector(".an").textContent;
+    row.querySelector(".aPw").onclick=async()=>{
+      const pw=row.querySelector("input").value;if(!pw){$("aErr").textContent="Type a new password first";return;}
+      try{await api("update_account",{target_account_id:id,password:pw});row.querySelector("input").value="";toast("Password updated for "+name);}catch(e){$("aErr").textContent=e.message;}
+    };
+    const del=row.querySelector(".aDel");
+    del.onclick=async()=>{
+      if(del.dataset.armed!=="1"){del.dataset.armed="1";del.textContent="Confirm?";setTimeout(()=>{del.dataset.armed="";del.textContent="Delete";},3000);return;}
+      try{await api("delete_account",{target_account_id:id});toast("Deleted "+name);loadAcctList();loadPreviewList();}catch(e){$("aErr").textContent=e.message;}
+    };
+  });
+}
+$("btnAccounts").onclick=openAccounts;
+
+/* preview as player */
+async function loadPreviewList(){
+  try{const r=await api("list_accounts");
+    $("previewSel").innerHTML='<option value="">Preview as…</option>'+r.accounts.filter(a=>!a.is_dm).map(a=>`<option value="${a.id}">${esc(a.character_name)}</option>`).join("");
+  }catch(e){}
+}
+$("previewSel").addEventListener("change",async e=>{
+  const id=e.target.value;if(!id)return exitPreview();
+  PREVIEW={id,name:e.target.selectedOptions[0].textContent};
+  $("previewText").textContent="Previewing as "+PREVIEW.name+" — read-only";
+  $("previewBanner").classList.add("on");
+  await refreshState();
+});
+async function exitPreview(){PREVIEW=null;$("previewSel").value="";$("previewBanner").classList.remove("on");await refreshState();}
+$("btnExitPreview").onclick=exitPreview;
+
+/* export */
+$("btnExport").onclick=async()=>{
+  try{
+    const r=await api("export_all");
+    const blob=new Blob([JSON.stringify(r,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download="honor-tracker-g2-backup-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".json";
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }catch(e){toast("Export failed: "+e.message);}
+};
+
+boot();
+</script>
+</body>
+</html>
