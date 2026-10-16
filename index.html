@@ -317,6 +317,10 @@ $("loginForm").addEventListener("submit",async e=>{
 });
 function logoutLocal(){
   TOKEN=null;ME=null;PREVIEW=null;lsSet(TOKEN_KEY,null);stopPolling();closeSide();
+  // Wipe the previous user's data and view so the next person on this browser never sees it.
+  stateSeq++;STATE.npcs=[];STATE.scores={};STATE.notes={};STATE.settings={};
+  $("main").innerHTML='<div class="spinner"></div>';$("sideInner").innerHTML="";
+  F.q="";$("fQ").value="";$("previewBanner").classList.remove("on");$("previewSel").value="";
   $("app").style.display="none";$("loginScreen").style.display="flex";
   loadCharacters();  // the name list may never have loaded if this session started from a saved login
 }
@@ -332,22 +336,31 @@ async function enterApp(){
 async function boot(){
   TOKEN=lsGet(TOKEN_KEY);
   if(TOKEN){
-    try{const r=await api("me");ME=r;enterApp();return;}catch(e){TOKEN=null;lsSet(TOKEN_KEY,null);}
+    try{const r=await api("me");ME=r;enterApp();return;}
+    catch(e){
+      // A 401 already logged us out inside api(). Anything else is a network problem: keep the saved login.
+      if(TOKEN){$("lErr").textContent="Can't reach the server right now. Check your connection and reload.";TOKEN=null;}
+    }
   }
   $("loginScreen").style.display="flex";loadCharacters();
 }
 
 /* ---------- state ---------- */
 const viewingAsDM=()=>ME&&ME.is_dm&&!PREVIEW;
+let stateSeq=0;
 async function refreshState(){
+  // Only the newest request may update STATE. Without this, switching Preview on/off quickly could let a
+  // late (player-masked) preview response overwrite the DM's real data, and an edit would then save "Unknown".
+  const seq=++stateSeq;
   try{
     const r=PREVIEW?await api("preview_as_player",{target_account_id:PREVIEW.id}):await api("get_state");
+    if(seq!==stateSeq)return;
     STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};STATE.notes=r.notes||{};if(r.settings)STATE.settings=r.settings;syncFYButton();
     if(!PREVIEW)mergeLocalDrafts();
     buildGroupFilter();render();
     if(selectedId)openSide(selectedId);
     if(!ME.is_dm)startPolling();
-  }catch(e){$("main").innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+  }catch(e){if(seq===stateSeq)$("main").innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
 async function pollScores(){
   if(!TOKEN||ME.is_dm)return;
@@ -658,7 +671,7 @@ function syncFYButton(){
 $("btnFY").onclick=async()=>{
   const next=!STATE.settings.reveal_first_year_signets;
   try{const r=await api("set_setting",{key:"reveal_first_year_signets",value:next});STATE.settings=r.settings;syncFYButton();
-    if(selectedId)openSide(selectedId);toast(next?"First-year signets shown to players":"First-year signets hidden from players");}
+    if(PREVIEW)await refreshState();else if(selectedId)openSide(selectedId);toast(next?"First-year signets shown to players":"First-year signets hidden from players");}
   catch(e){toast(e.message);}
 };
 
