@@ -5,8 +5,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions" };
-const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "power", "status", "deceased", "public_note", "sort_order"];
+const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions", settings: "g2_settings" };
+const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "power", "signet_revealed", "status", "deceased", "public_note", "sort_order"];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -38,14 +38,31 @@ async function getMe(token: string | null) {
   const { data: a } = await admin.from(T.accounts).select("id, character_name, is_dm").eq("id", (s as any).account_id).maybeSingle();
   return a as { id: string; character_name: string; is_dm: boolean } | null;
 }
-async function stateFor(accountId: string) {
-  const [npcsR, scoresR] = await Promise.all([
+async function getSettings() {
+  const { data } = await admin.from(T.settings).select("key, value");
+  const o: Record<string, unknown> = {};
+  (data ?? []).forEach((r: any) => { o[r.key] = r.value; });
+  return { reveal_first_year_signets: o.reveal_first_year_signets === true };
+}
+// First years have not been threshed yet: their signets stay hidden from players unless
+// the global setting or that NPC's own toggle reveals them. Masking happens here, server-side.
+function maskForPlayer(npcs: any[], settings: { reveal_first_year_signets: boolean }) {
+  return npcs.map((n) => {
+    if (String(n.year ?? "").trim() === "1" && !settings.reveal_first_year_signets && !n.signet_revealed)
+      return { ...n, signet: "Unknown", second_signet: "Unknown" };
+    return n;
+  });
+}
+async function stateFor(accountId: string, asDm: boolean) {
+  const [npcsR, scoresR, settings] = await Promise.all([
     admin.from(T.npcs).select("*").order("sort_order"),
     admin.from(T.scores).select("npc_id, value").eq("account_id", accountId),
+    getSettings(),
   ]);
   const scores: Record<string, number> = {};
   (scoresR.data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
-  return { npcs: npcsR.data ?? [], scores };
+  const npcs = npcsR.data ?? [];
+  return { npcs: asDm ? npcs : maskForPlayer(npcs, settings), scores, settings: asDm ? settings : undefined };
 }
 
 Deno.serve(async (req) => {
@@ -80,7 +97,7 @@ Deno.serve(async (req) => {
     if (!me) return json({ error: "Not authenticated" }, 401);
 
     if (action === "me") return json({ character_name: me.character_name, is_dm: me.is_dm });
-    if (action === "get_state") return json({ ...(await stateFor(me.id)), is_dm: me.is_dm });
+    if (action === "get_state") return json({ ...(await stateFor(me.id, me.is_dm)), is_dm: me.is_dm });
     if (action === "poll_scores") {
       const { data } = await admin.from(T.scores).select("npc_id, value").eq("account_id", me.id);
       const scores: Record<string, number> = {};
@@ -94,7 +111,14 @@ Deno.serve(async (req) => {
     if (action === "preview_as_player") {
       const { data: t } = await admin.from(T.accounts).select("id, character_name").eq("id", payload.target_account_id).maybeSingle();
       if (!t) return json({ error: "Not found" }, 404);
-      return json({ ...(await stateFor((t as any).id)), is_dm: false, previewing_as: (t as any).character_name });
+      return json({ ...(await stateFor((t as any).id, false)), is_dm: false, previewing_as: (t as any).character_name });
+    }
+    if (action === "set_setting") {
+      if (payload.key !== "reveal_first_year_signets") return json({ error: "Unknown setting" }, 400);
+      const { error } = await admin.from(T.settings).upsert(
+        { key: payload.key, value: !!payload.value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true, settings: await getSettings() });
     }
     if (action === "dm_scores_for_npc") {
       const [pR, sR] = await Promise.all([

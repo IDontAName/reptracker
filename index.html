@@ -53,6 +53,9 @@ input,select,textarea{font-family:inherit}
 .badge-dm{display:inline-block;margin-left:5px;font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;background:var(--blood);color:#fff;padding:2px 5px;border-radius:3px;font-family:'Cinzel',serif;vertical-align:middle}
 .topbtn{font-size:.64rem;text-transform:uppercase;letter-spacing:.09em;font-family:'Cinzel',serif;color:var(--txt-dim);border:1px solid var(--edge);padding:6px 11px;border-radius:var(--rad);white-space:nowrap}
 .topbtn:hover{color:var(--parch);border-color:var(--gold-dim)}
+.topbtn.on{color:#1a1510;background:var(--gold);border-color:var(--gold)}
+.fy-note{margin-top:6px;padding:5px 8px;border-left:2px solid var(--gold-dim);background:rgba(201,162,75,.06);font-size:.8rem;color:var(--gold-dim);font-style:italic}
+.fy-toggle{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.88rem;color:var(--parch-dim);cursor:pointer}
 select.topbtn{background:var(--ink2);padding:5px 8px}
 .preview-banner{display:none;background:rgba(201,162,75,.12);border-bottom:1px solid var(--gold-dim);color:var(--gold);padding:7px 16px;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;align-items:center;gap:10px}
 .preview-banner.on{display:flex}
@@ -197,6 +200,7 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
       <span class="whoami" id="whoami"></span>
       <span id="dmTools" style="display:none;gap:6px;flex-wrap:wrap;align-items:center">
         <select class="topbtn" id="previewSel" aria-label="Preview as player"><option value="">Preview as…</option></select>
+        <button class="topbtn" id="btnFY" title="Show or hide every first year's signets for players">1st-Yr Signets: Hidden</button>
         <button class="topbtn" id="btnAddNpc">+ NPC</button>
         <button class="topbtn" id="btnAccounts">Accounts</button>
         <button class="topbtn" id="btnExport">Export</button>
@@ -233,7 +237,7 @@ const API="https://adqnhmmgrrptiljuvnwv.supabase.co/functions/v1/rep-api-g2";
 const PUB="sb_publishable_NaXgpmsqeHWBQale9Y1pDg_eQkDudOO";
 const TOKEN_KEY="g2_honor_token";
 let TOKEN=null,ME=null,PREVIEW=null,selectedId=null,pollTimer=null;
-const STATE={npcs:[],scores:{}};
+const STATE={npcs:[],scores:{},settings:{}};
 const F={q:"",group:"",sort:"default",hideDead:false};
 const $=id=>document.getElementById(id);
 
@@ -301,7 +305,7 @@ const viewingAsDM=()=>ME&&ME.is_dm&&!PREVIEW;
 async function refreshState(){
   try{
     const r=PREVIEW?await api("preview_as_player",{target_account_id:PREVIEW.id}):await api("get_state");
-    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};
+    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};if(r.settings)STATE.settings=r.settings;syncFYButton();
     buildGroupFilter();render();
     if(selectedId)openSide(selectedId);
     if(!ME.is_dm)startPolling();
@@ -322,6 +326,10 @@ function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
 const repOf=id=>STATE.scores[id]??0;
 const SIGNET_GROUPS=["Basgiath War College","Kingdom of Navarre"];
 const usesSignets=g=>SIGNET_GROUPS.includes(g||"");
+// First years haven't been threshed: players get "Unknown" (masked by the server) unless the
+// global toggle is on or this NPC's own toggle is on.
+const isFirstYear=n=>usesSignets(n.grp)&&String(n.year??"").trim()==="1";
+const hiddenFromPlayers=n=>isFirstYear(n)&&!STATE.settings.reveal_first_year_signets&&!n.signet_revealed;
 function repColor(v){return v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"var(--neutral)";}
 function repWord(v){if(v>=15)return"Devoted";if(v>=8)return"Trusted";if(v>=3)return"Friendly";if(v>-3)return"Neutral";if(v>-8)return"Wary";if(v>-15)return"Hostile";return"Nemesis";}
 function repBar(v){
@@ -408,12 +416,13 @@ function openSide(id){
     if(n.signet)rows.push(["Signet",n.signet]);
     if(n.second_signet)rows.push(["Second Signet",n.second_signet]);
   }else rows.push(["Power",n.power||"Unknown"]);
+  const fyNote=viewingAsDM()&&hiddenFromPlayers(n)?'<div class="fy-note">First year: players see both signets as Unknown.</div>':"";
   rows.push(["Status",n.deceased?"Deceased":"Active"]);
   let html=`<button class="side-close" id="sideClose" aria-label="Close">×</button>
     <div class="side-name">${esc(n.name)}</div>${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
     <div style="max-width:270px;margin:14px auto 0">${repBlock(v)}</div>
     <div class="side-sep"></div>
-    ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':''}">${esc(r[1])}</span></div>`).join("")}
+    ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':''}">${esc(r[1])}</span></div>`).join("")}${fyNote}
     ${n.public_note?`<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`:''}`;
   if(viewingAsDM())html+=dmBoxHTML(n);
   $("sideInner").innerHTML=html;
@@ -432,10 +441,18 @@ function dmBoxHTML(n){
     <div class="dm-actions">
       <button class="mini-btn" id="dmEdit">Edit NPC / Note</button>
       <button class="mini-btn" id="dmDead">${n.deceased?"Mark Alive":"Mark Deceased"}</button>
+    </div>
+    ${isFirstYear(n)?`<label class="fy-toggle"><input type="checkbox" id="dmReveal" ${n.signet_revealed?"checked":""}> Reveal this first year's signets${STATE.settings.reveal_first_year_signets?" (all first years are revealed right now)":""}</label>`:""}
+    <div class="dm-actions" style="margin-top:8px">
       <button class="mini-btn danger" id="dmDelete">Delete</button>
     </div></div>`;
 }
 async function wireDmBox(n){
+  if($("dmReveal"))$("dmReveal").onchange=async e=>{
+    const v=e.target.checked;
+    try{await api("upsert_npc",{npc:{id:n.id,signet_revealed:v}});n.signet_revealed=v;openSide(n.id);toast(v?"Signets revealed for "+n.name:"Signets hidden for "+n.name);}
+    catch(err){e.target.checked=!v;toast(err.message);}
+  };
   $("dmEdit").onclick=()=>openEditor(n);
   $("dmDead").onclick=async()=>{
     try{await api("upsert_npc",{npc:{id:n.id,deceased:!n.deceased}});n.deceased=!n.deceased;n.status=n.deceased?"Deceased":"Active";render();openSide(n.id);}
@@ -574,6 +591,18 @@ $("btnExport").onclick=async()=>{
     a.download="honor-tracker-g2-backup-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".json";
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }catch(e){toast("Export failed: "+e.message);}
+};
+
+/* first-year signets (global) */
+function syncFYButton(){
+  const on=!!STATE.settings.reveal_first_year_signets,b=$("btnFY");
+  b.textContent="1st-Yr Signets: "+(on?"Shown":"Hidden");b.classList.toggle("on",on);
+}
+$("btnFY").onclick=async()=>{
+  const next=!STATE.settings.reveal_first_year_signets;
+  try{const r=await api("set_setting",{key:"reveal_first_year_signets",value:next});STATE.settings=r.settings;syncFYButton();
+    if(selectedId)openSide(selectedId);toast(next?"First-year signets shown to players":"First-year signets hidden from players");}
+  catch(e){toast(e.message);}
 };
 
 boot();
