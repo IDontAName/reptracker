@@ -5,7 +5,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions", settings: "g2_settings", notes: "g2_notes", history: "g2_note_history", deletedNpcs: "g2_deleted_npcs", deletedNotes: "g2_deleted_notes" };
+const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions", settings: "g2_settings", notes: "g2_notes", history: "g2_note_history", deletedNpcs: "g2_deleted_npcs", deletedNotes: "g2_deleted_notes", modLog: "g2_modifier_log" };
+const BASGIATH = "Basgiath War College";
 const HISTORY_SHOWN = 30; // matches the trim limit in g2_save_note
 const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "power", "signet_revealed", "status", "deceased", "public_note", "sort_order"];
 
@@ -72,6 +73,7 @@ async function stateFor(accountId: string, asDm: boolean) {
   const scores: Record<string, number> = {};
   (scoresR.data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
   const npcs = npcsR.data ?? [];
+  npcs.forEach((n: any) => { if (n.deceased) scores[n.id] = 0; });   // the dead are always at 0 (stored values are kept)
   return { npcs: asDm ? npcs : maskForPlayer(npcs, settings), scores, notes, settings: asDm ? settings : undefined };
 }
 
@@ -121,9 +123,13 @@ Deno.serve(async (req) => {
     if (me.must_change_password) return json({ error: "Password change required", must_change_password: true }, 403);
     if (action === "get_state") return json({ ...(await stateFor(me.id, me.is_dm)), is_dm: me.is_dm });
     if (action === "poll_scores") {
-      const { data } = await admin.from(T.scores).select("npc_id, value").eq("account_id", me.id);
+      const [{ data }, { data: dead }] = await Promise.all([
+        admin.from(T.scores).select("npc_id, value").eq("account_id", me.id),
+        admin.from(T.npcs).select("id").eq("deceased", true),
+      ]);
       const scores: Record<string, number> = {};
       (data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
+      (dead ?? []).forEach((n: any) => { scores[n.id] = 0; });
       return json({ scores });
     }
 
@@ -170,20 +176,38 @@ Deno.serve(async (req) => {
       return json({ notes });
     }
     if (action === "dm_scores_for_npc") {
-      const [pR, sR] = await Promise.all([
+      const [pR, sR, nR] = await Promise.all([
         admin.from(T.accounts).select("id, character_name").eq("is_dm", false).order("character_name"),
         admin.from(T.scores).select("account_id, value").eq("npc_id", payload.npc_id),
+        admin.from(T.npcs).select("deceased").eq("id", payload.npc_id).maybeSingle(),
       ]);
+      const deceased = !!(nR.data as any)?.deceased;
       const scores: Record<string, number> = {};
-      (sR.data ?? []).forEach((s: any) => { scores[s.account_id] = s.value; });
-      return json({ players: pR.data ?? [], scores });
+      if (!deceased) (sR.data ?? []).forEach((s: any) => { scores[s.account_id] = s.value; });
+      return json({ players: pR.data ?? [], scores, deceased });
     }
     if (action === "set_score") {
+      const { data: npc } = await admin.from(T.npcs).select("deceased").eq("id", payload.npc_id).maybeSingle();
+      if ((npc as any)?.deceased) return json({ error: "Deceased NPCs are fixed at 0" }, 400);
       const { error } = await admin.from(T.scores).upsert(
         { account_id: payload.target_account_id, npc_id: payload.npc_id, value: clampScore(payload.value), updated_at: new Date().toISOString() },
         { onConflict: "account_id,npc_id" });
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
+    }
+    if (action === "group_modifier") {
+      // Add a delta to one player's standing with every living Basgiath NPC (staff included). Clamped to ±20.
+      const delta = parseInt(payload.delta);
+      const { data: t } = await admin.from(T.accounts).select("id, is_dm").eq("id", payload.target_account_id).maybeSingle();
+      if (!t || (t as any).is_dm) return json({ error: "Pick a player account" }, 400);
+      const { data, error } = await admin.rpc("g2_apply_group_modifier", { p_account: (t as any).id, p_grp: BASGIATH, p_delta: delta });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true, npcs_changed: data });
+    }
+    if (action === "modifier_log") {
+      const { data } = await admin.from(T.modLog).select("account_id, grp, delta, npcs_changed, applied_at")
+        .eq("grp", BASGIATH).order("applied_at", { ascending: false }).limit(200);
+      return json({ log: data ?? [] });
     }
     if (action === "upsert_npc") {
       const n = payload.npc ?? {};
@@ -253,7 +277,7 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
     if (action === "export_all") {
-      const [npcs, accounts, scores, notes, history, deletedNpcs, deletedNotes] = await Promise.all([
+      const [npcs, accounts, scores, notes, history, deletedNpcs, deletedNotes, modLog] = await Promise.all([
         admin.from(T.npcs).select("*").order("sort_order"),
         admin.from(T.accounts).select("id, character_name, is_dm, created_at"),
         admin.from(T.scores).select("*"),
@@ -261,9 +285,10 @@ Deno.serve(async (req) => {
         admin.from(T.history).select("*"),
         admin.from(T.deletedNpcs).select("*").order("deleted_at"),
         admin.from(T.deletedNotes).select("*").order("deleted_at"),
+        admin.from(T.modLog).select("*").order("applied_at"),
       ]);
       return json({ exported_at: new Date().toISOString(), npcs: npcs.data ?? [], accounts: accounts.data ?? [], scores: scores.data ?? [],
-        notes: notes.data ?? [], note_history: history.data ?? [],
+        notes: notes.data ?? [], note_history: history.data ?? [], modifier_log: modLog.data ?? [],
         archive: { deleted_npcs: deletedNpcs.data ?? [], deleted_notes: deletedNotes.data ?? [] } });
     }
 

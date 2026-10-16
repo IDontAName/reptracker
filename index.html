@@ -203,6 +203,13 @@ textarea.notes.big{min-height:60vh}
 .acct-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dotted var(--edge)}
 .acct-row .an{color:var(--parch);font-size:.95rem}
 .acct-row input{width:130px;padding:5px 8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.85rem}
+.mod-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.mod-row select,.mod-row input{padding:7px 9px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.95rem}
+.mod-row input{width:70px;text-align:center;font-family:'Cinzel',serif}
+.mod-net{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;margin:6px 0 12px;font-size:.88rem}
+.mod-net b{font-family:'Cinzel',serif}
+.mod-log{max-height:220px;overflow:auto;border-top:1px dotted var(--edge);padding-top:6px;font-size:.84rem;color:var(--txt-dim)}
+.mod-log div{padding:2px 0}
 .acct-new{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;margin-top:14px}
 
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:var(--panel2);border:1px solid var(--gold-dim);color:var(--parch);padding:9px 16px;border-radius:var(--rad);font-size:.9rem;z-index:80;transition:.25s}
@@ -253,6 +260,7 @@ textarea.notes.big{min-height:60vh}
       <span id="dmTools" style="display:none;gap:6px;flex-wrap:wrap;align-items:center">
         <select class="topbtn" id="previewSel" aria-label="Preview as player" data-tip="See the site exactly as this player sees it (read-only)"><option value="">Preview as…</option></select>
         <button class="topbtn" id="btnFY" data-tip="Show or hide every first year's signets for players. A first year's own Reveal checkbox still works while this is Hidden.">1st-Yr Signets: Hidden</button>
+        <button class="topbtn" id="btnMod" data-tip="Raise or lower one player's standing with every living Basgiath NPC (cadets and staff) at once">Basgiath Modifier</button>
         <button class="topbtn" id="btnAddNpc" data-tip="Add a new NPC">+ NPC</button>
         <button class="topbtn" id="btnAccounts" data-tip="Create accounts, see and reset passwords, delete accounts">Accounts</button>
         <button class="topbtn" id="btnExport" data-tip="Download a JSON backup: NPCs, accounts, standings, notes, note history and the deletion archive">Export</button>
@@ -555,6 +563,7 @@ async function wireDmBox(n){
   let r;try{r=await api("dm_scores_for_npc",{npc_id:n.id});}catch(e){box.textContent=e.message;return;}
   if(selectedId!==n.id)return;
   if(!(r.players||[]).length){box.innerHTML='<div class="empty" style="padding:10px">No player accounts yet.</div>';return;}
+  if(r.deceased){box.innerHTML='<div class="fy-note" style="margin:0">Deceased: every player\'s standing is fixed at 0. Their earlier standings are kept and come back if you mark them alive.</div>';return;}
   box.innerHTML=r.players.map(p=>{const v=r.scores[p.id]??0;return `<div class="pl-row" data-pid="${p.id}">
     <span class="pl-name">${esc(p.character_name)}</span>
     <span class="pl-ctrl"><button class="pl-step" data-d="-1" aria-label="Decrease" data-tip="−1">−</button><input class="pl-val" value="${v}" inputmode="numeric" aria-label="Standing for ${esc(p.character_name)}" data-tip="Type a value from −20 to +20, then press Enter"><button class="pl-step" data-d="1" aria-label="Increase" data-tip="+1">+</button></span></div>`;}).join("");
@@ -689,6 +698,45 @@ $("btnExport").onclick=async()=>{
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }catch(e){toast("Export failed: "+e.message);}
 };
+
+/* ---------- Basgiath modifier ---------- */
+async function openModifier(){
+  openModal(`<h3>Basgiath modifier</h3>
+    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:12px">Adds to one player's standing with every living Basgiath NPC (cadets and staff). Deceased NPCs are skipped. Standings stay within −20 to +20, so an NPC already at the limit won't move.</p>
+    <div class="mod-row"><select id="modPlayer" aria-label="Player"></select>
+      <button class="nt" id="modMinus" data-tip="−1">−</button><input id="modDelta" value="-1" inputmode="numeric" aria-label="Amount"><button class="nt" id="modPlus" data-tip="+1">+</button>
+      <button class="mini-btn go" id="modApply">Apply</button></div>
+    <div class="mod-net" id="modNet"></div>
+    <div class="mod-log" id="modLog"><div class="spinner"></div></div>
+    <div class="modal-foot"><span class="err" id="modErr"></span><button class="mini-btn" id="modClose">Close</button></div>`);
+  $("modClose").onclick=closeModal;
+  onModalClose=async()=>{if(PREVIEW)await refreshState();else if(selectedId)openSide(selectedId);};
+  let accts=[];
+  try{accts=(await api("list_accounts")).accounts.filter(a=>!a.is_dm);}catch(e){$("modErr").textContent=e.message;return;}
+  const names={};accts.forEach(a=>names[a.id]=a.character_name);
+  $("modPlayer").innerHTML=accts.map(a=>`<option value="${a.id}">${esc(a.character_name)}</option>`).join("");
+  const d=$("modDelta"),clampD=v=>{v=parseInt(v)||0;return Math.max(-20,Math.min(20,v));};
+  $("modMinus").onclick=()=>{d.value=clampD(d.value)-1;};
+  $("modPlus").onclick=()=>{d.value=clampD(d.value)+1;};
+  const loadLog=async()=>{
+    let r;try{r=await api("modifier_log");}catch(e){$("modLog").textContent=e.message;return;}
+    const net={};r.log.forEach(x=>net[x.account_id]=(net[x.account_id]||0)+x.delta);
+    $("modNet").innerHTML=accts.map(a=>{const v=net[a.id]||0;return `<span>${esc(a.character_name)}: <b style="color:${repColor(v)}">${v>0?"+":""}${v}</b></span>`;}).join("");
+    $("modLog").innerHTML=r.log.length?r.log.map(x=>`<div>${esc(fmtTime(x.applied_at))} · <b>${esc(names[x.account_id]||"?")}</b> ${x.delta>0?"+":""}${x.delta} on ${x.npcs_changed} NPCs</div>`).join("")
+      :'<div>No modifiers applied yet.</div>';
+  };
+  loadLog();
+  const apply=$("modApply");
+  apply.onclick=async()=>{
+    const delta=clampD(d.value),name=$("modPlayer").selectedOptions[0]?.textContent;
+    if(!delta){$("modErr").textContent="Choose an amount other than 0";return;}
+    if(apply.dataset.armed!=="1"){apply.dataset.armed="1";apply.textContent=`Confirm ${delta>0?"+":""}${delta} for ${name}?`;setTimeout(()=>{apply.dataset.armed="";apply.textContent="Apply";},4000);return;}
+    apply.dataset.armed="";apply.textContent="Apply";$("modErr").textContent="";
+    try{const r=await api("group_modifier",{target_account_id:$("modPlayer").value,delta});toast(`${name}: ${delta>0?"+":""}${delta} on ${r.npcs_changed} Basgiath NPCs`);loadLog();}
+    catch(e){$("modErr").textContent=e.message;}
+  };
+}
+$("btnMod").onclick=openModifier;
 
 /* ---------- passwords ---------- */
 function showForcedPwChange(){
