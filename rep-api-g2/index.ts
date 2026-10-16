@@ -6,7 +6,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions" };
-const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "status", "deceased", "public_note", "sort_order"];
+const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "power", "status", "deceased", "public_note", "sort_order"];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",

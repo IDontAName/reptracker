@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Basgiath Honor Tracker</title>
+<title>Honor Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -33,7 +33,6 @@ input,select,textarea{font-family:inherit}
   border:1px solid var(--edge2);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.75),0 0 0 1px rgba(201,162,75,.08);padding:40px 34px 32px}
 .login-logo{text-align:center;margin-bottom:22px}
 .login-logo h1{font-size:1.4rem;color:var(--gold);font-weight:600;line-height:1.2}
-.login-logo p{color:var(--txt-faint);font-size:.85rem;font-style:italic;margin-top:5px;letter-spacing:.06em}
 .lfield{margin-bottom:15px}
 .lfield label,.ffield label{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.18em;color:var(--gold-dim);margin-bottom:6px;font-family:'Cinzel',serif}
 .lfield select,.lfield input{width:100%;padding:11px 13px;background:rgba(12,11,16,.9);color:var(--txt);border:1px solid var(--edge);border-radius:var(--rad);font-size:1rem}
@@ -48,7 +47,6 @@ input,select,textarea{font-family:inherit}
 .topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(20,18,27,.97),rgba(20,18,27,.88));
   border-bottom:1px solid var(--edge);padding:0 16px;display:flex;align-items:center;min-height:54px;gap:10px;flex-wrap:wrap}
 .brand h1{font-size:.95rem;color:var(--gold);font-weight:600;white-space:nowrap}
-.brand small{display:block;color:var(--gold-dim);font-size:.52rem;letter-spacing:.18em;text-transform:uppercase;margin-top:2px;font-family:'Cinzel',serif}
 .topbar-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;padding:7px 0}
 .whoami{font-size:.85rem;color:var(--txt-dim);white-space:nowrap;margin-right:4px}
 .whoami b{color:var(--parch);font-weight:600}
@@ -184,7 +182,7 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
 
 <div id="loginScreen">
   <form class="login-card" id="loginForm" autocomplete="on">
-    <div class="login-logo"><h1>Basgiath Honor Tracker</h1><p>Where you stand with the cadets of Basgiath</p></div>
+    <div class="login-logo"><h1>Honor Tracker</h1></div>
     <div class="lfield"><label for="lChar">Name</label><select id="lChar"><option value="">Loading…</option></select></div>
     <div class="lfield"><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
     <button class="btn-primary" type="submit" id="lBtn">Enter</button>
@@ -194,7 +192,7 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
 
 <div id="app">
   <header class="topbar">
-    <div class="brand"><h1>Basgiath Honor Tracker</h1><small>NPC Standing</small></div>
+    <div class="brand"><h1>Honor Tracker</h1></div>
     <div class="topbar-right">
       <span class="whoami" id="whoami"></span>
       <span id="dmTools" style="display:none;gap:6px;flex-wrap:wrap;align-items:center">
@@ -322,6 +320,8 @@ function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
 
 /* ---------- helpers ---------- */
 const repOf=id=>STATE.scores[id]??0;
+const SIGNET_GROUPS=["Basgiath War College","Kingdom of Navarre"];
+const usesSignets=g=>SIGNET_GROUPS.includes(g||"");
 function repColor(v){return v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"var(--neutral)";}
 function repWord(v){if(v>=15)return"Devoted";if(v>=8)return"Trusted";if(v>=3)return"Friendly";if(v>-3)return"Neutral";if(v>-8)return"Wary";if(v>-15)return"Hostile";return"Nemesis";}
 function repBar(v){
@@ -350,7 +350,7 @@ function filtered(){
   let list=STATE.npcs.slice();
   if(F.group)list=list.filter(n=>(n.grp||"Unaffiliated")===F.group);
   if(F.hideDead)list=list.filter(n=>!n.deceased);
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.year&&("year "+n.year)].some(v=>v&&String(v).toLowerCase().includes(q)));}
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.power,n.year&&("year "+n.year)].some(v=>v&&String(v).toLowerCase().includes(q)));}
   if(F.sort==="name")list.sort((a,b)=>a.name.localeCompare(b.name));
   else if(F.sort==="rep_hi")list.sort((a,b)=>repOf(b.id)-repOf(a.id)||a.sort_order-b.sort_order);
   else if(F.sort==="rep_lo")list.sort((a,b)=>repOf(a.id)-repOf(b.id)||a.sort_order-b.sort_order);
@@ -404,8 +404,10 @@ function openSide(id){
   const v=repOf(id),rows=[];
   const pos=posText(n);if(pos&&n.wing)rows.push(["Position",pos]);
   if(n.year)rows.push(["Year",n.year]);
-  if(n.signet)rows.push(["Signet",n.signet]);
-  if(n.second_signet)rows.push(["Second Signet",n.second_signet]);
+  if(usesSignets(n.grp)){
+    if(n.signet)rows.push(["Signet",n.signet]);
+    if(n.second_signet)rows.push(["Second Signet",n.second_signet]);
+  }else rows.push(["Power",n.power||"Unknown"]);
   rows.push(["Status",n.deceased?"Deceased":"Active"]);
   let html=`<button class="side-close" id="sideClose" aria-label="Close">×</button>
     <div class="side-name">${esc(n.name)}</div>${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
@@ -484,7 +486,8 @@ function openEditor(n){
       ${f("grp","Group")}${f("subgroup","Subgroup")}
       <div class="ffield"><label for="e_wing">Wing</label><input id="e_wing" type="number" min="1" max="9" value="${esc(n.wing??"")}"></div>
       ${f("section","Section")}${f("squad","Squad (e.g. 1st)")}
-      ${f("signet","Signet")}${f("second_signet","Second Signet")}
+      <div class="fgrid ffield full" id="e_sigwrap" style="margin:0">${f("signet","Signet")}${f("second_signet","Second Signet")}</div>
+      <div class="ffield full" id="e_powwrap">${f("power","Power","full")}</div>
       <div class="ffield full"><label for="e_public_note">Note from the DM (players see this)</label><textarea id="e_public_note">${esc(n.public_note??"")}</textarea></div>
       <label class="check ffield full"><input type="checkbox" id="e_deceased" ${n.deceased?"checked":""}> Deceased</label>
     </div>
@@ -495,15 +498,18 @@ function openEditor(n){
   $("eSave").onclick=async()=>{
     const v=k=>$("e_"+k).value.trim()||null;
     const npc={name:v("name"),role:v("role"),year:v("year"),grp:v("grp"),subgroup:v("subgroup"),section:v("section"),squad:v("squad"),
-      signet:v("signet"),second_signet:v("second_signet"),public_note:v("public_note"),
+      signet:v("signet"),second_signet:v("second_signet"),power:v("power"),public_note:v("public_note"),
       wing:$("e_wing").value?parseInt($("e_wing").value):null,deceased:$("e_deceased").checked};
     if(!npc.name){$("eErr").textContent="Name is required";return;}
+    if(usesSignets(npc.grp))npc.power=null;else{npc.signet=null;npc.second_signet=null;}
     if(!isNew)npc.id=n.id;
     try{
       const r=await api("upsert_npc",{npc});
       closeModal();await refreshState();openSide(r.id);toast(isNew?"NPC added":"Saved");
     }catch(e){$("eErr").textContent=e.message;}
   };
+  const syncPowerFields=()=>{const sig=usesSignets($("e_grp").value.trim());$("e_sigwrap").style.display=sig?"":"none";$("e_powwrap").style.display=sig?"none":"";};
+  $("e_grp").addEventListener("input",syncPowerFields);syncPowerFields();
   setTimeout(()=>$("e_name").focus(),30);
 }
 $("btnAddNpc").onclick=()=>openEditor(null);
