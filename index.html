@@ -40,6 +40,13 @@ input,select,textarea{font-family:inherit}
 .btn-primary{width:100%;margin-top:6px;padding:13px;background:linear-gradient(180deg,var(--gold),var(--gold-dim));color:#1a1510;
   font-family:'Cinzel',serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.8rem;border-radius:var(--rad)}
 .btn-primary:hover{filter:brightness(1.1)}
+.pw-note{font-size:.84rem;color:var(--parch-dim);text-align:center;margin:-8px 0 16px;line-height:1.45}
+.pw-warn{font-size:.8rem;color:var(--gold);text-align:center;margin:10px 0 0;font-style:italic}
+.link-btn{display:block;margin:12px auto 0;font-size:.8rem;color:var(--txt-faint);text-decoration:underline}
+.acct-row .pw{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;color:var(--parch);background:var(--ink);border:1px solid var(--edge);border-radius:3px;padding:1px 6px;user-select:all}
+.acct-row .pst{font-size:.68rem;font-style:italic;color:var(--txt-faint);margin-left:6px}
+.acct-row .pst.must{color:var(--gold)}
+.acct-meta{grid-column:1/-1;font-size:.8rem;color:var(--txt-dim);display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .login-err{color:var(--blood-bright);text-align:center;font-size:.9rem;margin-top:12px;min-height:1.1em}
 
 /* shell */
@@ -226,6 +233,16 @@ textarea.notes.big{min-height:60vh}
     <button class="btn-primary" type="submit" id="lBtn">Enter</button>
     <div class="login-err" id="lErr"></div>
   </form>
+  <form class="login-card" id="pwForm" style="display:none" autocomplete="off">
+    <div class="login-logo"><h1>Choose a new password</h1></div>
+    <p class="pw-note" id="pwIntro">First login: replace your start code with a password of your own.</p>
+    <div class="lfield"><label for="pwNew">New password</label><input id="pwNew" type="password" autocomplete="new-password" minlength="4" maxlength="64"></div>
+    <div class="lfield"><label for="pwNew2">Type it again</label><input id="pwNew2" type="password" autocomplete="new-password" maxlength="64"></div>
+    <button class="btn-primary" type="submit" id="pwBtn">Save password</button>
+    <p class="pw-warn">The DM can see this password, so don't reuse one from another site.</p>
+    <div class="login-err" id="pwErr"></div>
+    <button class="link-btn" type="button" id="pwLogout">Log out instead</button>
+  </form>
 </div>
 
 <div id="app">
@@ -237,9 +254,10 @@ textarea.notes.big{min-height:60vh}
         <select class="topbtn" id="previewSel" aria-label="Preview as player" data-tip="See the site exactly as this player sees it (read-only)"><option value="">Preview as…</option></select>
         <button class="topbtn" id="btnFY" data-tip="Show or hide every first year's signets for players. A first year's own Reveal checkbox still works while this is Hidden.">1st-Yr Signets: Hidden</button>
         <button class="topbtn" id="btnAddNpc" data-tip="Add a new NPC">+ NPC</button>
-        <button class="topbtn" id="btnAccounts" data-tip="Create accounts, reset passwords, delete accounts">Accounts</button>
-        <button class="topbtn" id="btnExport" data-tip="Download a JSON backup of all NPCs, accounts and standings">Export</button>
+        <button class="topbtn" id="btnAccounts" data-tip="Create accounts, see and reset passwords, delete accounts">Accounts</button>
+        <button class="topbtn" id="btnExport" data-tip="Download a JSON backup: NPCs, accounts, standings, notes, note history and the deletion archive">Export</button>
       </span>
+      <button class="topbtn" id="btnPassword" data-tip="Change your password">Password</button>
       <button class="topbtn" id="btnLogout">Log out</button>
     </div>
   </header>
@@ -288,6 +306,7 @@ async function api(action,body={}){
   const res=await fetch(API,{method:"POST",headers:h,body:JSON.stringify({action,...body})});
   let d={};try{d=await res.json();}catch(e){}
   if(res.status===401&&action!=="login"){logoutLocal();throw new Error("Session expired — please log in again");}
+  if(res.status===403&&d.must_change_password){if(ME)ME.must_change_password=true;showForcedPwChange();throw new Error("Password change required");}
   if(!res.ok)throw new Error(d.error||("HTTP "+res.status));
   return d;
 }
@@ -310,8 +329,9 @@ $("loginForm").addEventListener("submit",async e=>{
   try{
     const r=await api("login",{character_name:name,password:pw});
     TOKEN=r.token;lsSet(TOKEN_KEY,TOKEN);lsSet("g2_last_char",name);
-    ME={character_name:r.character_name,is_dm:r.is_dm};
-    $("lPass").value="";enterApp();
+    ME={character_name:r.character_name,is_dm:r.is_dm,must_change_password:!!r.must_change_password};
+    $("lPass").value="";
+    if(ME.must_change_password)showForcedPwChange();else enterApp();
   }catch(err){$("lErr").textContent=err.message;}
   $("lBtn").disabled=false;
 });
@@ -322,6 +342,7 @@ function logoutLocal(){
   $("main").innerHTML='<div class="spinner"></div>';$("sideInner").innerHTML="";
   F.q="";$("fQ").value="";$("previewBanner").classList.remove("on");$("previewSel").value="";
   $("app").style.display="none";$("loginScreen").style.display="flex";
+  $("pwForm").style.display="none";$("loginForm").style.display="";
   loadCharacters();  // the name list may never have loaded if this session started from a saved login
 }
 $("btnLogout").onclick=async()=>{try{await flushAllNotes();}catch(e){}try{await api("logout");}catch(e){}logoutLocal();};
@@ -336,7 +357,7 @@ async function enterApp(){
 async function boot(){
   TOKEN=lsGet(TOKEN_KEY);
   if(TOKEN){
-    try{const r=await api("me");ME=r;enterApp();return;}
+    try{const r=await api("me");ME=r;if(ME.must_change_password)showForcedPwChange();else enterApp();return;}
     catch(e){
       // A 401 already logged us out inside api(). Anything else is a network problem: keep the saved login.
       if(TOKEN){$("lErr").textContent="Can't reach the server right now. Check your connection and reload.";TOKEN=null;}
@@ -512,7 +533,7 @@ function dmBoxHTML(n){
     </div>
     ${isFirstYear(n)?`<label class="fy-toggle"><input type="checkbox" id="dmReveal" ${n.signet_revealed?"checked":""}> Reveal this first year's signets${STATE.settings.reveal_first_year_signets?" (all first years are revealed right now)":""}</label>`:""}
     <div class="dm-actions" style="margin-top:8px">
-      <button class="mini-btn danger" id="dmDelete" data-tip="Permanently delete this NPC and all standings with them">Delete</button>
+      <button class="mini-btn danger" id="dmDelete" data-tip="Delete this NPC. Its details, standings and player notes are kept in the deletion archive.">Delete</button>
     </div></div>`;
 }
 async function wireDmBox(n){
@@ -527,7 +548,7 @@ async function wireDmBox(n){
     try{await api("upsert_npc",{npc:{id:n.id,deceased:!n.deceased}});n.deceased=!n.deceased;n.status=n.deceased?"Deceased":"Active";render();openSide(n.id);}
     catch(e){toast(e.message);}
   };
-  $("dmDelete").onclick=()=>confirmModal(`Delete ${n.name}?`,"This removes the NPC, every player's standing with them and every player's notes on them. Export a backup first if you might want them. It can't be undone.","Delete",async()=>{
+  $("dmDelete").onclick=()=>confirmModal(`Delete ${n.name}?`,"This removes the NPC from the site. Its details, every player's standing with it and every player's notes on it are kept in the deletion archive (included in Export).","Delete",async()=>{
     await api("delete_npc",{npc_id:n.id});STATE.npcs=STATE.npcs.filter(x=>x.id!==n.id);closeSide();buildGroupFilter();render();toast("Deleted");
   });
   const box=$("dmPlayers");
@@ -619,19 +640,25 @@ async function loadAcctList(){
   const box=$("acctList");if(!box)return;
   let r;try{r=await api("list_accounts");}catch(e){box.textContent=e.message;return;}
   box.innerHTML=r.accounts.map(a=>`<div class="acct-row" data-id="${a.id}"><span class="an">${esc(a.character_name)}${a.is_dm?'<span class="badge-dm">DM</span>':''}</span>
-    <span><input placeholder="New password" aria-label="New password for ${esc(a.character_name)}"> <button class="mini-btn aPw">Set</button></span>
-    <button class="mini-btn danger aDel" ${a.character_name===ME.character_name?"disabled style='opacity:.35'":""}>Delete</button></div>`).join("");
+    <span><input placeholder="Set a password" aria-label="New password for ${esc(a.character_name)}"> <button class="mini-btn aPw" data-tip="Give this account a password you choose">Set</button></span>
+    <button class="mini-btn danger aDel" ${a.character_name===ME.character_name?"disabled style='opacity:.35'":""}>Delete</button>
+    <div class="acct-meta">Current password: <span class="pw" data-tip="Click to select, then copy">${esc(a.password_plain||"(unknown)")}</span>
+      ${a.is_dm?"":(a.must_change_password?'<span class="pst must" data-tip="They will be asked to choose a new password on their next login">start code, change pending</span>':'<span class="pst">changed by player</span>')}
+      ${!a.is_dm&&a.initial_password?`<button class="mini-btn aReset" style="margin-left:auto" data-tip="Reset to the start code (${esc(a.initial_password)}), sign them out, and ask them to choose a new password on next login">Reset to start code</button>`:""}
+    </div></div>`).join("");
   box.querySelectorAll(".acct-row").forEach(row=>{
-    const id=row.dataset.id,name=row.querySelector(".an").textContent;
+    const id=row.dataset.id,name=row.querySelector(".an").childNodes[0].textContent;
     row.querySelector(".aPw").onclick=async()=>{
       const pw=row.querySelector("input").value;if(!pw){$("aErr").textContent="Type a new password first";return;}
-      try{await api("update_account",{target_account_id:id,password:pw});row.querySelector("input").value="";toast("Password updated for "+name);}catch(e){$("aErr").textContent=e.message;}
+      try{await api("update_account",{target_account_id:id,password:pw});toast("Password updated for "+name);loadAcctList();}catch(e){$("aErr").textContent=e.message;}
     };
-    const del=row.querySelector(".aDel");
-    del.onclick=async()=>{
-      if(del.dataset.armed!=="1"){del.dataset.armed="1";del.textContent="Confirm?";setTimeout(()=>{del.dataset.armed="";del.textContent="Delete";},3000);return;}
-      try{await api("delete_account",{target_account_id:id});toast("Deleted "+name);loadAcctList();loadPreviewList();}catch(e){$("aErr").textContent=e.message;}
+    const armed=(btn,label,fn)=>btn.onclick=async()=>{
+      if(btn.dataset.armed!=="1"){btn.dataset.armed="1";btn.textContent="Confirm?";setTimeout(()=>{btn.dataset.armed="";btn.textContent=label;},3000);return;}
+      try{await fn();}catch(e){$("aErr").textContent=e.message;}
     };
+    const reset=row.querySelector(".aReset");
+    if(reset)armed(reset,"Reset to start code",async()=>{const r=await api("reset_password",{target_account_id:id});toast(name+" reset to "+r.password);loadAcctList();});
+    armed(row.querySelector(".aDel"),"Delete",async()=>{await api("delete_account",{target_account_id:id});toast("Deleted "+name);loadAcctList();loadPreviewList();});
   });
 }
 $("btnAccounts").onclick=openAccounts;
@@ -661,6 +688,40 @@ $("btnExport").onclick=async()=>{
     a.download="honor-tracker-g2-backup-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".json";
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }catch(e){toast("Export failed: "+e.message);}
+};
+
+/* ---------- passwords ---------- */
+function showForcedPwChange(){
+  stopPolling();
+  $("app").style.display="none";$("loginScreen").style.display="flex";
+  $("loginForm").style.display="none";$("pwForm").style.display="";
+  $("pwIntro").textContent="First login: replace your start code with a password of your own.";
+  $("pwNew").value="";$("pwNew2").value="";$("pwErr").textContent="";
+  setTimeout(()=>$("pwNew").focus(),30);
+}
+async function submitPw(newPw,again,errEl){
+  if(newPw.length<4){errEl.textContent="Use at least 4 characters";return false;}
+  if(newPw!==again){errEl.textContent="The two passwords don't match";return false;}
+  try{await api("change_password",{new_password:newPw});return true;}catch(e){errEl.textContent=e.message;return false;}
+}
+$("pwForm").addEventListener("submit",async e=>{
+  e.preventDefault();$("pwBtn").disabled=true;
+  if(await submitPw($("pwNew").value,$("pwNew2").value,$("pwErr"))){
+    ME.must_change_password=false;$("pwForm").style.display="none";$("loginForm").style.display="";
+    toast("Password saved");enterApp();
+  }
+  $("pwBtn").disabled=false;
+});
+$("pwLogout").onclick=async()=>{try{await api("logout");}catch(e){}logoutLocal();};
+$("btnPassword").onclick=()=>{
+  openModal(`<h3>Change password</h3>
+    <div class="fgrid"><div class="ffield full"><label for="cpNew">New password</label><input id="cpNew" type="password" autocomplete="new-password" maxlength="64"></div>
+    <div class="ffield full"><label for="cpNew2">Type it again</label><input id="cpNew2" type="password" autocomplete="new-password" maxlength="64"></div></div>
+    ${ME&&!ME.is_dm?'<p class="pw-warn" style="text-align:left">The DM can see this password, so don\'t reuse one from another site.</p>':''}
+    <div class="modal-foot"><span class="err" id="cpErr"></span><button class="mini-btn" id="cpCancel">Cancel</button><button class="mini-btn go" id="cpSave">Save</button></div>`);
+  $("cpCancel").onclick=closeModal;
+  $("cpSave").onclick=async()=>{if(await submitPw($("cpNew").value,$("cpNew2").value,$("cpErr"))){closeModal();toast("Password changed");}};
+  setTimeout(()=>$("cpNew").focus(),30);
 };
 
 /* first-year signets (global) */
