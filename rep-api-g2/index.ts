@@ -5,7 +5,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions", settings: "g2_settings" };
+const T = { accounts: "g2_accounts", npcs: "g2_npcs", scores: "g2_scores", sessions: "g2_sessions", settings: "g2_settings", notes: "g2_notes", history: "g2_note_history" };
+const HISTORY_SHOWN = 30; // matches the trim limit in g2_save_note
 const NPC_FIELDS = ["name", "role", "grp", "subgroup", "wing", "section", "squad", "year", "signet", "second_signet", "power", "signet_revealed", "status", "deceased", "public_note", "sort_order"];
 
 const CORS = {
@@ -28,6 +29,12 @@ async function verifyPassword(pw: string, stored: string): Promise<boolean> {
 }
 function newToken() { return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/[^a-zA-Z0-9]/g, "").slice(0, 40); }
 function clampScore(v: unknown) { const n = parseInt(String(v)); return Number.isFinite(n) ? Math.max(-20, Math.min(20, n)) : 0; }
+function cleanStyle(st: any) {
+  const font = ["serif", "sans", "mono"].includes(st?.font) ? st.font : "serif";
+  const size = Math.max(12, Math.min(28, parseInt(st?.size) || 16));
+  const lh = Math.max(1.2, Math.min(2.4, Number(st?.lh) || 1.6));
+  return { font, size, lh };
+}
 function pickNpc(src: any) { const o: any = {}; for (const k of NPC_FIELDS) if (k in src) o[k] = src[k] === "" ? null : src[k]; return o; }
 
 // Two plain queries joined in code (no PostgREST embeds).
@@ -54,15 +61,18 @@ function maskForPlayer(npcs: any[], settings: { reveal_first_year_signets: boole
   });
 }
 async function stateFor(accountId: string, asDm: boolean) {
-  const [npcsR, scoresR, settings] = await Promise.all([
+  const [npcsR, scoresR, settings, notesR] = await Promise.all([
     admin.from(T.npcs).select("*").order("sort_order"),
     admin.from(T.scores).select("npc_id, value").eq("account_id", accountId),
     getSettings(),
+    admin.from(T.notes).select("npc_id, body, style, updated_at").eq("account_id", accountId),
   ]);
+  const notes: Record<string, unknown> = {};
+  (notesR.data ?? []).forEach((n: any) => { notes[n.npc_id] = { body: n.body, style: n.style, updated_at: n.updated_at }; });
   const scores: Record<string, number> = {};
   (scoresR.data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
   const npcs = npcsR.data ?? [];
-  return { npcs: asDm ? npcs : maskForPlayer(npcs, settings), scores, settings: asDm ? settings : undefined };
+  return { npcs: asDm ? npcs : maskForPlayer(npcs, settings), scores, notes, settings: asDm ? settings : undefined };
 }
 
 Deno.serve(async (req) => {
@@ -105,6 +115,22 @@ Deno.serve(async (req) => {
       return json({ scores });
     }
 
+    // ---------- PLAYER NOTES (own notes only) ----------
+    if (action === "set_note") {
+      if (!payload.npc_id) return json({ error: "npc_id required" }, 400);
+      // g2_save_note (database function) archives the previous version, saves, and trims history in one transaction.
+      const { data, error } = await admin.rpc("g2_save_note", {
+        p_account: me.id, p_npc: payload.npc_id, p_body: String(payload.body ?? ""), p_style: cleanStyle(payload.style),
+      });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true, updated_at: data });
+    }
+    if (action === "note_history") {
+      const { data } = await admin.from(T.history).select("id, body, style, saved_at").eq("account_id", me.id).eq("npc_id", payload.npc_id)
+        .order("saved_at", { ascending: false }).limit(HISTORY_SHOWN);
+      return json({ history: data ?? [] });
+    }
+
     // ---------- DM ONLY ----------
     if (!me.is_dm) return json({ error: "DM only" }, 403);
 
@@ -119,6 +145,17 @@ Deno.serve(async (req) => {
         { key: payload.key, value: !!payload.value, updated_at: new Date().toISOString() }, { onConflict: "key" });
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, settings: await getSettings() });
+    }
+    if (action === "dm_notes_for_npc") {
+      const [pR, nR] = await Promise.all([
+        admin.from(T.accounts).select("id, character_name").eq("is_dm", false).order("character_name"),
+        admin.from(T.notes).select("account_id, body, style, updated_at").eq("npc_id", payload.npc_id),
+      ]);
+      const byAcct: Record<string, any> = {};
+      (nR.data ?? []).forEach((n: any) => { byAcct[n.account_id] = n; });
+      const notes = (pR.data ?? []).filter((p: any) => byAcct[p.id] && byAcct[p.id].body.trim())
+        .map((p: any) => ({ character_name: p.character_name, body: byAcct[p.id].body, style: byAcct[p.id].style, updated_at: byAcct[p.id].updated_at }));
+      return json({ notes });
     }
     if (action === "dm_scores_for_npc") {
       const [pR, sR] = await Promise.all([
@@ -186,12 +223,15 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
     if (action === "export_all") {
-      const [npcs, accounts, scores] = await Promise.all([
+      const [npcs, accounts, scores, notes, history] = await Promise.all([
         admin.from(T.npcs).select("*").order("sort_order"),
         admin.from(T.accounts).select("id, character_name, is_dm, created_at"),
         admin.from(T.scores).select("*"),
+        admin.from(T.notes).select("*"),
+        admin.from(T.history).select("*"),
       ]);
-      return json({ exported_at: new Date().toISOString(), npcs: npcs.data ?? [], accounts: accounts.data ?? [], scores: scores.data ?? [] });
+      return json({ exported_at: new Date().toISOString(), npcs: npcs.data ?? [], accounts: accounts.data ?? [], scores: scores.data ?? [],
+        notes: notes.data ?? [], note_history: history.data ?? [] });
     }
 
     return json({ error: "Unknown action: " + action }, 400);

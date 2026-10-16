@@ -93,6 +93,19 @@ select.topbtn{background:var(--ink2);padding:5px 8px}
 .card.dead::after{content:"DECEASED";position:absolute;top:10px;right:-28px;transform:rotate(38deg);background:var(--blood);color:#fff;font-family:'Cinzel',serif;font-size:.48rem;letter-spacing:.14em;padding:2px 30px}
 .card .nm{font-family:'Cinzel',serif;font-size:.96rem;color:var(--parch);font-weight:600;line-height:1.15;padding-right:14px}
 .card .role{font-size:.82rem;color:var(--txt-dim);margin-top:2px;font-style:italic}
+.yr{font-style:normal;font-family:'Cinzel',serif;font-size:.8em;letter-spacing:.06em;color:var(--gold);opacity:.85;cursor:help}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,transparent);transition:background .3s}
+.card:hover .nm{color:var(--gold)}
+.subgrp-head{display:flex;justify-content:space-between;align-items:baseline}
+.subgrp-head .sc{font-family:'EB Garamond',serif;font-style:italic;letter-spacing:0;text-transform:none;color:var(--txt-faint);font-size:.78rem}
+.rep-tick{position:absolute;top:1px;bottom:1px;width:1px;background:rgba(255,255,255,.07);z-index:1}
+.rep-val{cursor:help}
+.detail-row .v.unknown{color:var(--txt-faint);font-style:italic}
+#tip{position:fixed;z-index:90;width:max-content;max-width:min(300px,calc(100vw - 12px));padding:7px 10px;background:var(--panel2);border:1px solid var(--gold-dim);border-radius:var(--rad);
+  color:var(--parch);font-size:.82rem;line-height:1.4;box-shadow:var(--shadow);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;white-space:pre-line}
+#tip.show{opacity:1;transform:translateY(0)}
+.side-inner::-webkit-scrollbar,.modal-bg::-webkit-scrollbar{width:8px}
+.side-inner::-webkit-scrollbar-thumb,.modal-bg::-webkit-scrollbar-thumb{background:var(--edge2);border-radius:4px}
 .card .pos{font-size:.7rem;color:var(--txt-faint);margin-top:2px}
 .card .dmn{position:absolute;top:8px;right:10px;color:var(--gold-dim);font-size:.7rem}
 .rep{margin-top:9px}
@@ -147,6 +160,28 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
 /* modal */
 .modal-bg{position:fixed;inset:0;z-index:60;background:rgba(6,4,14,.72);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
 .modal-bg.open{display:flex}
+.notes-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:'Cinzel',serif;font-size:.64rem;text-transform:uppercase;letter-spacing:.13em;color:var(--gold-dim);margin:16px 0 6px}
+.note-bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px}
+.note-bar select{padding:3px 6px;background:var(--ink);border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt);font-size:.8rem}
+.nt{min-width:28px;height:26px;padding:0 7px;border:1px solid var(--edge2);border-radius:var(--rad);background:var(--ink);color:var(--txt-dim);font-size:.78rem;font-family:'Cinzel',serif}
+.nt:hover{color:var(--parch);border-color:var(--gold-dim)}
+.nt.grow{margin-left:auto}
+textarea.notes{width:100%;min-height:130px;resize:vertical;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);padding:9px 11px;font-size:16px;line-height:1.6;tab-size:2}
+textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
+textarea.notes[readonly]{opacity:.85;cursor:default}
+textarea.notes.big{min-height:60vh}
+.note-foot{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:.66rem;color:var(--txt-faint);font-style:italic;min-height:1.1em}
+.note-foot .st.warn{color:var(--blood-bright);font-style:normal}
+.note-foot .st.ok{color:var(--pos-bright)}
+.modal.wide{width:min(900px,100%)}
+.hist-item{border:1px solid var(--edge);border-radius:var(--rad);padding:8px 10px;margin-bottom:8px;background:var(--ink)}
+.hist-item .hh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.78rem;color:var(--gold-dim);margin-bottom:5px}
+.hist-item pre,.pn-body{white-space:pre-wrap;word-break:break-word;font-family:inherit;color:var(--parch);font-size:.9rem;line-height:1.5;max-height:220px;overflow:auto}
+.pn{border:1px solid var(--edge);border-left:3px solid var(--gold-dim);border-radius:var(--rad);padding:9px 11px;margin-bottom:10px;background:var(--ink)}
+.pn-h{display:flex;justify-content:space-between;gap:8px;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.06em;color:var(--gold);margin-bottom:5px}
+.pn-h span:last-child{font-family:'EB Garamond',serif;font-style:italic;letter-spacing:0;color:var(--txt-faint);font-size:.78rem}
+.pn-body{max-height:none}
+.card .mynote{position:absolute;bottom:8px;right:10px;color:var(--gold-dim);font-size:.72rem}
 .modal{width:min(560px,100%);background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--edge2);border-radius:8px;box-shadow:var(--shadow);padding:22px 22px 18px}
 .modal h3{color:var(--gold);font-size:1.05rem;margin-bottom:14px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
@@ -199,11 +234,11 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
     <div class="topbar-right">
       <span class="whoami" id="whoami"></span>
       <span id="dmTools" style="display:none;gap:6px;flex-wrap:wrap;align-items:center">
-        <select class="topbtn" id="previewSel" aria-label="Preview as player"><option value="">Preview as…</option></select>
-        <button class="topbtn" id="btnFY" title="Show or hide every first year's signets for players">1st-Yr Signets: Hidden</button>
-        <button class="topbtn" id="btnAddNpc">+ NPC</button>
-        <button class="topbtn" id="btnAccounts">Accounts</button>
-        <button class="topbtn" id="btnExport">Export</button>
+        <select class="topbtn" id="previewSel" aria-label="Preview as player" data-tip="See the site exactly as this player sees it (read-only)"><option value="">Preview as…</option></select>
+        <button class="topbtn" id="btnFY" data-tip="Show or hide every first year's signets for players. A first year's own Reveal checkbox still works while this is Hidden.">1st-Yr Signets: Hidden</button>
+        <button class="topbtn" id="btnAddNpc" data-tip="Add a new NPC">+ NPC</button>
+        <button class="topbtn" id="btnAccounts" data-tip="Create accounts, reset passwords, delete accounts">Accounts</button>
+        <button class="topbtn" id="btnExport" data-tip="Download a JSON backup of all NPCs, accounts and standings">Export</button>
       </span>
       <button class="topbtn" id="btnLogout">Log out</button>
     </div>
@@ -220,7 +255,7 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
     <div class="ctl"><label for="fSort">Sort</label><select id="fSort">
       <option value="default">Roster</option><option value="name">Name</option>
       <option value="rep_hi">Standing ↓</option><option value="rep_lo">Standing ↑</option></select></div>
-    <button class="chip" id="fDead">Hide deceased</button>
+    <button class="chip" id="fDead" data-tip="Hide NPCs marked deceased">Hide deceased</button>
     <span class="count" id="count"></span>
   </div>
       <main class="main" id="main"><div class="spinner"></div></main>
@@ -231,13 +266,14 @@ aside.side.open{width:370px;border-left-color:var(--edge);background:linear-grad
 
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status"></div>
+<div id="tip" role="tooltip"></div>
 
 <script>
 const API="https://adqnhmmgrrptiljuvnwv.supabase.co/functions/v1/rep-api-g2";
 const PUB="sb_publishable_NaXgpmsqeHWBQale9Y1pDg_eQkDudOO";
 const TOKEN_KEY="g2_honor_token";
 let TOKEN=null,ME=null,PREVIEW=null,selectedId=null,pollTimer=null;
-const STATE={npcs:[],scores:{},settings:{}};
+const STATE={npcs:[],scores:{},settings:{},notes:{}};
 const F={q:"",group:"",sort:"default",hideDead:false};
 const $=id=>document.getElementById(id);
 
@@ -282,8 +318,9 @@ $("loginForm").addEventListener("submit",async e=>{
 function logoutLocal(){
   TOKEN=null;ME=null;PREVIEW=null;lsSet(TOKEN_KEY,null);stopPolling();closeSide();
   $("app").style.display="none";$("loginScreen").style.display="flex";
+  loadCharacters();  // the name list may never have loaded if this session started from a saved login
 }
-$("btnLogout").onclick=async()=>{try{await api("logout");}catch(e){}logoutLocal();};
+$("btnLogout").onclick=async()=>{try{await flushAllNotes();}catch(e){}try{await api("logout");}catch(e){}logoutLocal();};
 
 async function enterApp(){
   $("loginScreen").style.display="none";$("app").style.display="block";
@@ -305,7 +342,8 @@ const viewingAsDM=()=>ME&&ME.is_dm&&!PREVIEW;
 async function refreshState(){
   try{
     const r=PREVIEW?await api("preview_as_player",{target_account_id:PREVIEW.id}):await api("get_state");
-    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};if(r.settings)STATE.settings=r.settings;syncFYButton();
+    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};STATE.notes=r.notes||{};if(r.settings)STATE.settings=r.settings;syncFYButton();
+    if(!PREVIEW)mergeLocalDrafts();
     buildGroupFilter();render();
     if(selectedId)openSide(selectedId);
     if(!ME.is_dm)startPolling();
@@ -316,7 +354,10 @@ async function pollScores(){
   try{
     const r=await api("poll_scores");const s=r.scores||{};
     const changed=Object.keys({...s,...STATE.scores}).some(k=>s[k]!==STATE.scores[k]);
-    if(changed){STATE.scores=s;render();if(selectedId)openSide(selectedId);}
+    if(changed){STATE.scores=s;render();
+      // Don't rebuild the side panel while the player is typing a note (it would move their cursor).
+      const typing=document.activeElement&&document.activeElement.classList.contains("notes");
+      if(selectedId&&!typing)openSide(selectedId);}
   }catch(e){}
 }
 function startPolling(){stopPolling();pollTimer=setInterval(pollScores,8000);}
@@ -331,13 +372,23 @@ const usesSignets=g=>SIGNET_GROUPS.includes(g||"");
 const isFirstYear=n=>usesSignets(n.grp)&&String(n.year??"").trim()==="1";
 const hiddenFromPlayers=n=>isFirstYear(n)&&!STATE.settings.reveal_first_year_signets&&!n.signet_revealed;
 function repColor(v){return v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"var(--neutral)";}
+const STANDING_TIP="Devoted: +15 and up\nTrusted: +8 to +14\nFriendly: +3 to +7\nNeutral: −2 to +2\nWary: −7 to −3\nHostile: −14 to −8\nNemesis: −15 and below";
+// Role line with the cadet year appended, e.g. "Cadet [1]". NPCs without a year (other groups,
+// some leaders) show the role alone; NPCs without a role show nothing.
+function roleHTML(n,cls){
+  const y=String(n.year??"").trim();
+  if(!n.role&&!y)return"";
+  const tag=y?`<span class="yr" data-tip="Year ${esc(y)}">[${esc(y)}]</span>`:"";
+  return `<div class="${cls}">${esc(n.role||"")}${n.role&&tag?" ":""}${tag}</div>`;
+}
 function repWord(v){if(v>=15)return"Devoted";if(v>=8)return"Trusted";if(v>=3)return"Friendly";if(v>-3)return"Neutral";if(v>-8)return"Wary";if(v>-15)return"Hostile";return"Nemesis";}
 function repBar(v){
   const pct=Math.abs(v)/20*50,cls=v>=0?"p":"n",left=v>=0?50:50-pct,dot=(v+20)/40*100;
-  return `<div class="rep-shell"><div class="rep-track"><div class="rep-mid"></div><div class="rep-fill ${cls}" style="left:${left}%;width:${pct}%"></div></div><div class="rep-dot" style="left:${dot}%"></div></div>`;
+  const ticks=[-15,-8,-3,3,8,15].map(t=>`<div class="rep-tick" style="left:${(t+20)/40*100}%"></div>`).join("");
+  return `<div class="rep-shell"><div class="rep-track">${ticks}<div class="rep-mid"></div><div class="rep-fill ${cls}" style="left:${left}%;width:${pct}%"></div></div><div class="rep-dot" style="left:${dot}%"></div></div>`;
 }
 function repBlock(v,extra=""){
-  return `<div class="rep"${extra}><div class="rep-top"><span class="rep-lbl">Standing</span><span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>${repBar(v)}<div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div></div>`;
+  return `<div class="rep"${extra}><div class="rep-top"><span class="rep-lbl">Standing</span><span class="rep-val" style="color:${repColor(v)}" data-tip="${STANDING_TIP}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>${repBar(v)}<div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div></div>`;
 }
 function ordinal(n){n=parseInt(n);if(isNaN(n))return null;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 function posText(n){
@@ -358,7 +409,7 @@ function filtered(){
   let list=STATE.npcs.slice();
   if(F.group)list=list.filter(n=>(n.grp||"Unaffiliated")===F.group);
   if(F.hideDead)list=list.filter(n=>!n.deceased);
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.power,n.year&&("year "+n.year)].some(v=>v&&String(v).toLowerCase().includes(q)));}
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.power,n.year&&("year "+n.year),!viewingAsDM()&&STATE.notes[n.id]&&STATE.notes[n.id].body].some(v=>v&&String(v).toLowerCase().includes(q)));}
   if(F.sort==="name")list.sort((a,b)=>a.name.localeCompare(b.name));
   else if(F.sort==="rep_hi")list.sort((a,b)=>repOf(b.id)-repOf(a.id)||a.sort_order-b.sort_order);
   else if(F.sort==="rep_lo")list.sort((a,b)=>repOf(a.id)-repOf(b.id)||a.sort_order-b.sort_order);
@@ -369,9 +420,11 @@ function filtered(){
 /* ---------- render ---------- */
 function cardHTML(n,showPos){
   const v=repOf(n.id),pos=showPos?posText(n):"";
-  return `<div class="card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}" role="button" tabindex="0">
-    ${viewingAsDM()&&n.public_note?'<span class="dmn" title="Has a note from the DM">✎</span>':''}
-    <div class="nm">${esc(n.name)}</div>${n.role?`<div class="role">${esc(n.role)}</div>`:''}
+  const accent=v>0?"var(--pos)":v<0?"var(--blood-bright)":"transparent";
+  return `<div class="card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}" role="button" tabindex="0" style="--accent:${accent}">
+    ${viewingAsDM()&&n.public_note?'<span class="dmn" data-tip="Has a note from the DM">✎</span>':''}
+    ${!viewingAsDM()&&STATE.notes[n.id]&&STATE.notes[n.id].body&&STATE.notes[n.id].body.trim()?`<span class="mynote" data-tip="${PREVIEW?"This player has notes on this NPC":"You have notes on this NPC"}">✎ notes</span>`:''}
+    <div class="nm">${esc(n.name)}</div>${roleHTML(n,"role")}
     ${pos?`<div class="pos">${esc(pos)}</div>`:''}
     ${repBlock(v)}</div>`;
 }
@@ -394,7 +447,7 @@ function render(){
     main.innerHTML=groups.map(g=>{
       const total=g.order.reduce((s,k)=>s+g.subs[k].length,0);
       return `<section class="grp"><div class="grp-head"><h2>${esc(g.name)}</h2><div class="rule"></div><span class="gcount">${total}</span></div>`+
-        g.order.map(sg=>`<div class="subgrp">${sg?`<div class="subgrp-head">${esc(sg)}</div>`:''}<div class="cards">${g.subs[sg].map(n=>cardHTML(n,false)).join("")}</div></div>`).join("")+`</section>`;
+        g.order.map(sg=>`<div class="subgrp">${sg?`<div class="subgrp-head"><span>${esc(sg)}</span><span class="sc">${g.subs[sg].length}</span></div>`:''}<div class="cards">${g.subs[sg].map(n=>cardHTML(n,false)).join("")}</div></div>`).join("")+`</section>`;
     }).join("");
   }
   main.querySelectorAll(".card").forEach(c=>{c.addEventListener("click",()=>openSide(c.dataset.id));c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openSide(c.dataset.id);}});});
@@ -419,16 +472,17 @@ function openSide(id){
   const fyNote=viewingAsDM()&&hiddenFromPlayers(n)?'<div class="fy-note">First year: players see both signets as Unknown.</div>':"";
   rows.push(["Status",n.deceased?"Deceased":"Active"]);
   let html=`<button class="side-close" id="sideClose" aria-label="Close">×</button>
-    <div class="side-name">${esc(n.name)}</div>${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
+    <div class="side-name">${esc(n.name)}</div>${roleHTML(n,"side-role")}
     <div style="max-width:270px;margin:14px auto 0">${repBlock(v)}</div>
     <div class="side-sep"></div>
-    ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':''}">${esc(r[1])}</span></div>`).join("")}${fyNote}
+    ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':r[1]==="Unknown"?'unknown':''}" ${r[1]==="CLASSIFIED"?'data-tip="This signet is classified"':r[1]==="Unknown"?'data-tip="Not known"':r[0]==="Year"?`data-tip="Year ${esc(r[1])} cadet"`:''}>${esc(r[1])}</span></div>`).join("")}${fyNote}
     ${n.public_note?`<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`:''}`;
   if(viewingAsDM())html+=dmBoxHTML(n);
+  else html+=`<div class="notes-h"><span>${PREVIEW?esc(PREVIEW.name)+"'s Notes":"Your Private Notes"}</span></div>${noteEditorHTML("s",!!PREVIEW,false)}`;
   $("sideInner").innerHTML=html;
   $("side").classList.add("open");
   $("sideClose").onclick=closeSide;
-  if(viewingAsDM())wireDmBox(n);
+  if(viewingAsDM())wireDmBox(n);else wireNoteEditor(n,"s",!!PREVIEW);
 }
 function closeSide(){$("side").classList.remove("open");selectedId=null;document.querySelectorAll(".card.sel").forEach(c=>c.classList.remove("sel"));}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("modalBg").classList.contains("open"))closeModal();else closeSide();}});
@@ -439,15 +493,17 @@ function dmBoxHTML(n){
     <div id="dmPlayers"><div class="spinner"></div></div>
     <div class="saved-flag" id="dmSaved"></div>
     <div class="dm-actions">
-      <button class="mini-btn" id="dmEdit">Edit NPC / Note</button>
+      <button class="mini-btn" id="dmEdit" data-tip="Edit details and the note players see">Edit NPC / Note</button>
       <button class="mini-btn" id="dmDead">${n.deceased?"Mark Alive":"Mark Deceased"}</button>
+      <button class="mini-btn" id="dmPlayerNotes" data-tip="Read every player's private notes on this NPC">Player Notes</button>
     </div>
     ${isFirstYear(n)?`<label class="fy-toggle"><input type="checkbox" id="dmReveal" ${n.signet_revealed?"checked":""}> Reveal this first year's signets${STATE.settings.reveal_first_year_signets?" (all first years are revealed right now)":""}</label>`:""}
     <div class="dm-actions" style="margin-top:8px">
-      <button class="mini-btn danger" id="dmDelete">Delete</button>
+      <button class="mini-btn danger" id="dmDelete" data-tip="Permanently delete this NPC and all standings with them">Delete</button>
     </div></div>`;
 }
 async function wireDmBox(n){
+  $("dmPlayerNotes").onclick=()=>openPlayerNotes(n);
   if($("dmReveal"))$("dmReveal").onchange=async e=>{
     const v=e.target.checked;
     try{await api("upsert_npc",{npc:{id:n.id,signet_revealed:v}});n.signet_revealed=v;openSide(n.id);toast(v?"Signets revealed for "+n.name:"Signets hidden for "+n.name);}
@@ -458,7 +514,7 @@ async function wireDmBox(n){
     try{await api("upsert_npc",{npc:{id:n.id,deceased:!n.deceased}});n.deceased=!n.deceased;n.status=n.deceased?"Deceased":"Active";render();openSide(n.id);}
     catch(e){toast(e.message);}
   };
-  $("dmDelete").onclick=()=>confirmModal(`Delete ${n.name}?`,"This removes the NPC and every player's standing with them. It can't be undone.","Delete",async()=>{
+  $("dmDelete").onclick=()=>confirmModal(`Delete ${n.name}?`,"This removes the NPC, every player's standing with them and every player's notes on them. Export a backup first if you might want them. It can't be undone.","Delete",async()=>{
     await api("delete_npc",{npc_id:n.id});STATE.npcs=STATE.npcs.filter(x=>x.id!==n.id);closeSide();buildGroupFilter();render();toast("Deleted");
   });
   const box=$("dmPlayers");
@@ -467,7 +523,7 @@ async function wireDmBox(n){
   if(!(r.players||[]).length){box.innerHTML='<div class="empty" style="padding:10px">No player accounts yet.</div>';return;}
   box.innerHTML=r.players.map(p=>{const v=r.scores[p.id]??0;return `<div class="pl-row" data-pid="${p.id}">
     <span class="pl-name">${esc(p.character_name)}</span>
-    <span class="pl-ctrl"><button class="pl-step" data-d="-1" aria-label="Decrease">−</button><input class="pl-val" value="${v}" inputmode="numeric" aria-label="Standing for ${esc(p.character_name)}"><button class="pl-step" data-d="1" aria-label="Increase">+</button></span></div>`;}).join("");
+    <span class="pl-ctrl"><button class="pl-step" data-d="-1" aria-label="Decrease" data-tip="−1">−</button><input class="pl-val" value="${v}" inputmode="numeric" aria-label="Standing for ${esc(p.character_name)}" data-tip="Type a value from −20 to +20, then press Enter"><button class="pl-step" data-d="1" aria-label="Increase" data-tip="+1">+</button></span></div>`;}).join("");
   box.querySelectorAll(".pl-row").forEach(row=>{
     const inp=row.querySelector(".pl-val"),pid=row.dataset.pid;let t=null;
     const save=v=>{
@@ -483,7 +539,8 @@ async function wireDmBox(n){
 
 /* ---------- modals ---------- */
 function openModal(html){$("modal").innerHTML=html;$("modalBg").classList.add("open");}
-function closeModal(){$("modalBg").classList.remove("open");$("modal").innerHTML="";}
+let onModalClose=null;
+function closeModal(){const f=onModalClose;onModalClose=null;$("modalBg").classList.remove("open");$("modal").innerHTML="";$("modal").classList.remove("wide");if(f)f();}
 $("modalBg").addEventListener("click",e=>{if(e.target===$("modalBg"))closeModal();});
 function confirmModal(title,body,okLabel,fn){
   openModal(`<h3>${esc(title)}</h3><p style="color:var(--parch-dim)">${esc(body)}</p>
@@ -604,6 +661,209 @@ $("btnFY").onclick=async()=>{
     if(selectedId)openSide(selectedId);toast(next?"First-year signets shown to players":"First-year signets hidden from players");}
   catch(e){toast(e.message);}
 };
+
+/* ================= player notes =================
+   Redundancy layers:
+   1. Every edit is written to this browser's storage immediately (draft), before any network call.
+   2. Drafts sync to the server ~1s after typing stops, on blur, when the tab is hidden and on logout.
+   3. A failed save keeps the draft and retries every 15s and on the next visit, until the server confirms.
+   4. The server archives the previous version before every overwrite (last 30 kept; see History).
+   5. DM Export includes all notes and their history. */
+const NOTE_FONTS={serif:"'EB Garamond',Georgia,serif",sans:"system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",mono:"ui-monospace,Consolas,'Courier New',monospace"};
+const NOTE_LH=[1.35,1.6,1.9];
+const DEFAULT_STYLE={font:"serif",size:16,lh:1.6};
+const NOTE_MAX=50000;
+const noteTimers={},noteInFlight={},noteAgain={};
+let noteRetryTimer=null;
+const draftPrefix=()=>"g2_note_draft:"+(ME?ME.character_name:"?")+":";
+function getDraft(id){try{return JSON.parse(lsGet(draftPrefix()+id)||"null");}catch(e){return null;}}
+function setDraft(id,d){lsSet(draftPrefix()+id,d?JSON.stringify(d):null);}
+function lastStyle(){try{return {...DEFAULT_STYLE,...JSON.parse(lsGet("g2_note_style")||"{}")};}catch(e){return {...DEFAULT_STYLE};}}
+function noteOf(id){const n=STATE.notes[id];return {body:n?.body||"",style:{...DEFAULT_STYLE,...(n?.style||lastStyle())},updated_at:n?.updated_at||null};}
+function pendingIds(){
+  const out=[];try{const pre=draftPrefix();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(pre))out.push(k.slice(pre.length));}}catch(e){}
+  return out;
+}
+function fmtTime(iso){if(!iso)return"";const d=new Date(iso);return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
+function applyNoteStyle(ta,st){ta.style.fontFamily=NOTE_FONTS[st.font]||NOTE_FONTS.serif;ta.style.fontSize=st.size+"px";ta.style.lineHeight=st.lh;}
+function wordCount(t){const m=t.trim().match(/\S+/g);return m?m.length:0;}
+
+/* status shown under every open editor for this NPC */
+function setNoteStatus(id,kind,extra){
+  document.querySelectorAll(`.note-st[data-id="${id}"]`).forEach(el=>{
+    el.classList.remove("warn","ok");
+    if(kind==="saving")el.textContent="Saving…";
+    else if(kind==="saved"){el.textContent="Saved "+fmtTime(extra)+" ✓";el.classList.add("ok");}
+    else if(kind==="local"){el.textContent="Not synced yet — kept on this device, retrying…";el.classList.add("warn");}
+    else if(kind==="idle")el.textContent=extra?("Last saved "+fmtTime(extra)):"";
+  });
+}
+function queueNoteSave(id,body,style){
+  setDraft(id,{body,style,ts:Date.now()});
+  STATE.notes[id]={...(STATE.notes[id]||{}),body,style};
+  setNoteStatus(id,"saving");
+  clearTimeout(noteTimers[id]);noteTimers[id]=setTimeout(()=>flushNote(id),1000);
+}
+async function flushNote(id){
+  clearTimeout(noteTimers[id]);noteTimers[id]=null;
+  const d=getDraft(id);if(!d)return true;
+  if(noteInFlight[id]){noteAgain[id]=true;return false;}
+  noteInFlight[id]=true;let ok=false;
+  try{
+    const r=await api("set_note",{npc_id:id,body:d.body,style:d.style});
+    const cur=getDraft(id);
+    if(cur&&cur.ts===d.ts)setDraft(id,null);           // only clear if nothing newer was typed meanwhile
+    STATE.notes[id]={body:d.body,style:d.style,updated_at:r.updated_at};
+    if(!getDraft(id))setNoteStatus(id,"saved",r.updated_at);
+    ok=true;
+  }catch(e){
+    setNoteStatus(id,"local");scheduleNoteRetry();
+    if(/too long/i.test(e.message))toast(e.message);
+  }finally{
+    noteInFlight[id]=false;
+    if(noteAgain[id]){noteAgain[id]=false;flushNote(id);}
+  }
+  refreshNoteMarker(id);
+  return ok;
+}
+function scheduleNoteRetry(){if(noteRetryTimer)return;noteRetryTimer=setTimeout(async()=>{noteRetryTimer=null;await flushAllNotes();},15000);}
+async function flushAllNotes(){
+  if(!ME||PREVIEW)return;
+  const ids=pendingIds();let allOk=true;
+  for(const id of ids){if(!STATE.npcs.some(n=>n.id===id)){continue;}if(!(await flushNote(id)))allOk=false;}
+  return allOk;
+}
+/* After loading state: any unsynced local draft wins (the server keeps the old version in History). */
+function mergeLocalDrafts(){
+  if(!ME)return;
+  const ids=pendingIds();
+  ids.forEach(id=>{const d=getDraft(id);if(d&&STATE.npcs.some(n=>n.id===id))STATE.notes[id]={...(STATE.notes[id]||{}),body:d.body,style:d.style};});
+  if(ids.length)flushAllNotes();
+}
+function refreshNoteMarker(id){
+  const card=document.querySelector(`.card[data-id="${id}"]`);if(!card)return;
+  const has=!!(STATE.notes[id]&&STATE.notes[id].body&&STATE.notes[id].body.trim());
+  let m=card.querySelector(".mynote");
+  if(has&&!m){card.insertAdjacentHTML("beforeend",'<span class="mynote" data-tip="You have notes on this NPC">✎ notes</span>');}
+  else if(!has&&m)m.remove();
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushAllNotes();});
+window.addEventListener("pagehide",()=>{
+  // Best effort on close: keepalive requests survive the page unloading. Drafts stay in storage either way.
+  if(!TOKEN||PREVIEW)return;
+  pendingIds().forEach(id=>{const d=getDraft(id);if(!d)return;
+    try{fetch(API,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","apikey":PUB,"Authorization":"Bearer "+PUB,"x-session-token":TOKEN},body:JSON.stringify({action:"set_note",npc_id:id,body:d.body,style:d.style})});}catch(e){}
+  });
+});
+// Warn only while a save is actually mid-flight or about to fire; unsynced drafts are already kept on this device.
+window.addEventListener("beforeunload",e=>{if(Object.values(noteInFlight).some(Boolean)||Object.values(noteTimers).some(Boolean)){e.preventDefault();e.returnValue="";}});
+
+/* editor markup (p = prefix so the side panel and the expanded editor can coexist) */
+function noteEditorHTML(p,readOnly,big){
+  const tools=readOnly?`<div class="note-bar"><button class="nt grow" id="${p}Expand" data-tip="Open in a large window">⤢ Expand</button></div>`:
+  `<div class="note-bar">
+    <select id="${p}Font" aria-label="Font" data-tip="Font"><option value="serif">Serif</option><option value="sans">Sans</option><option value="mono">Mono</option></select>
+    <button class="nt" id="${p}Smaller" data-tip="Smaller text">A−</button>
+    <button class="nt" id="${p}Bigger" data-tip="Larger text">A+</button>
+    <button class="nt" id="${p}Spacing" data-tip="Line spacing">↕</button>
+    <button class="nt" id="${p}Stamp" data-tip="Insert today's date and time">🕒</button>
+    <button class="nt" id="${p}History" data-tip="Earlier saved versions (restore anything)">⟲</button>
+    ${big?`<button class="nt" id="${p}Download" data-tip="Download this note as a .txt file">⤓</button>`:`<button class="nt grow" id="${p}Expand" data-tip="Open in a large editor">⤢</button>`}
+  </div>`;
+  return `${tools}<textarea class="notes ${big?"big":""}" id="${p}Area" maxlength="${NOTE_MAX}" ${readOnly?"readonly":""} placeholder="${readOnly?"No notes.":"Only you (and the DM) can see these…"}" spellcheck="true"></textarea>
+    <div class="note-foot"><span class="st note-st" id="${p}St"></span><span id="${p}Count"></span></div>`;
+}
+function wireNoteEditor(n,p,readOnly){
+  const id=n.id,ta=$(p+"Area");if(!ta)return;
+  const cur=noteOf(id);let style={...cur.style};
+  ta.value=cur.body;applyNoteStyle(ta,style);
+  $(p+"St").dataset.id=id;
+  const count=()=>{$(p+"Count").textContent=`${wordCount(ta.value)} words · ${ta.value.length.toLocaleString()} chars`;};
+  count();
+  if(getDraft(id)&&!readOnly)setNoteStatus(id,"local");else setNoteStatus(id,"idle",cur.updated_at);
+  if($(p+"Expand"))$(p+"Expand").onclick=()=>openNoteModal(n,readOnly);
+  if(readOnly)return;
+  const changed=()=>{count();queueNoteSave(id,ta.value,{...style});};
+  const restyle=()=>{applyNoteStyle(ta,style);lsSet("g2_note_style",JSON.stringify(style));if(ta.value||STATE.notes[id])changed();};
+  $(p+"Font").value=style.font;
+  $(p+"Font").onchange=e=>{style.font=e.target.value;restyle();};
+  $(p+"Smaller").onclick=()=>{style.size=Math.max(12,style.size-1);restyle();};
+  $(p+"Bigger").onclick=()=>{style.size=Math.min(28,style.size+1);restyle();};
+  $(p+"Spacing").onclick=()=>{const i=NOTE_LH.indexOf(style.lh);style.lh=NOTE_LH[(i+1)%NOTE_LH.length];restyle();};
+  $(p+"Stamp").onclick=()=>{
+    const stamp="["+new Date().toLocaleString(undefined,{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})+"] ";
+    const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;
+    const pre=ta.value.slice(0,a),lead=pre&&!pre.endsWith("\n")?"\n":"";
+    ta.value=pre+lead+stamp+ta.value.slice(b);const pos=(pre+lead+stamp).length;ta.focus();ta.setSelectionRange(pos,pos);changed();
+  };
+  $(p+"History").onclick=()=>openNoteHistory(n);
+  if($(p+"Download"))$(p+"Download").onclick=()=>{
+    const blob=new Blob([n.name+"\n"+"=".repeat(n.name.length)+"\n\n"+ta.value],{type:"text/plain"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=("notes-"+n.name).replace(/[^\w\- ]+/g,"").replace(/\s+/g,"-")+".txt";
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  };
+  ta.addEventListener("input",changed);
+  ta.addEventListener("blur",()=>flushNote(id));
+  ta.addEventListener("keydown",e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();flushNote(id);}
+  });
+}
+function openNoteModal(n,readOnly){
+  flushNote(n.id);
+  openModal(`<h3>${esc(n.name)} · ${readOnly&&PREVIEW?esc(PREVIEW.name)+"'s notes":"Notes"}</h3>${noteEditorHTML("m",readOnly,true)}
+    <div class="modal-foot"><button class="mini-btn go" id="mDone">Done</button></div>`);
+  $("modal").classList.add("wide");
+  wireNoteEditor(n,"m",readOnly);
+  $("mDone").onclick=closeModal;
+  onModalClose=()=>{flushNote(n.id);if(selectedId===n.id)openSide(n.id);};
+  setTimeout(()=>{const ta=$("mArea");if(ta&&!readOnly){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},30);
+}
+async function openNoteHistory(n){
+  await flushNote(n.id);
+  openModal(`<h3>${esc(n.name)} · Earlier versions</h3><div id="histList"><div class="spinner"></div></div>
+    <div class="modal-foot"><button class="mini-btn" id="hClose">Close</button></div>`);
+  $("modal").classList.add("wide");$("hClose").onclick=closeModal;
+  onModalClose=()=>{if(selectedId===n.id)openSide(n.id);};
+  let r;try{r=await api("note_history",{npc_id:n.id});}catch(e){$("histList").textContent=e.message;return;}
+  const list=r.history||[];
+  if(!list.length){$("histList").innerHTML='<div class="empty" style="padding:20px">No earlier versions yet. A version is kept every time a saved note is changed.</div>';return;}
+  $("histList").innerHTML=list.map((h,i)=>`<div class="hist-item"><div class="hh"><span>${esc(fmtTime(h.saved_at))} · ${wordCount(h.body)} words</span>
+    <button class="mini-btn" data-i="${i}" data-tip="Replace the current note with this version (the current one is kept in history)">Restore</button></div><pre>${esc(h.body)}</pre></div>`).join("");
+  $("histList").querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{
+    const h=list[+b.dataset.i];queueNoteSave(n.id,h.body,{...DEFAULT_STYLE,...(h.style||{})});flushNote(n.id);toast("Version restored");closeModal();
+  });
+}
+/* DM: read every player's notes on one NPC */
+async function openPlayerNotes(n){
+  openModal(`<h3>Player notes · ${esc(n.name)}</h3><div id="pnList"><div class="spinner"></div></div>
+    <div class="modal-foot"><button class="mini-btn" id="pnClose">Close</button></div>`);
+  $("modal").classList.add("wide");$("pnClose").onclick=closeModal;
+  let r;try{r=await api("dm_notes_for_npc",{npc_id:n.id});}catch(e){$("pnList").textContent=e.message;return;}
+  const list=r.notes||[];
+  $("pnList").innerHTML=list.length?list.map(x=>{const st={...DEFAULT_STYLE,...(x.style||{})};
+    return `<div class="pn"><div class="pn-h"><span>${esc(x.character_name)}</span><span>Edited ${esc(fmtTime(x.updated_at))} · ${wordCount(x.body)} words</span></div>
+      <div class="pn-body" style="font-family:${NOTE_FONTS[st.font]||NOTE_FONTS.serif};font-size:${st.size}px;line-height:${st.lh}">${esc(x.body)}</div></div>`;}).join("")
+    :'<div class="empty" style="padding:20px">No player has written notes on this NPC yet.</div>';
+}
+
+/* tooltips: one floating element, so tips are never clipped by cards or panels */
+(function(){
+  const tip=$("tip");let cur=null;
+  const place=el=>{
+    const r=el.getBoundingClientRect(),t=tip.getBoundingClientRect();
+    let x=r.left+r.width/2-t.width/2,y=r.top-t.height-8;
+    if(y<6)y=r.bottom+8;
+    x=Math.max(6,Math.min(x,window.innerWidth-t.width-6));
+    tip.style.left=x+"px";tip.style.top=y+"px";
+  };
+  const show=el=>{cur=el;tip.textContent=el.dataset.tip;tip.classList.add("show");place(el);};
+  const hide=()=>{cur=null;tip.classList.remove("show");};
+  document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el&&el!==cur)show(el);else if(!el&&cur)hide();});
+  document.addEventListener("focusin",e=>{const el=e.target.closest("[data-tip]");if(el)show(el);});
+  document.addEventListener("focusout",hide);
+  window.addEventListener("scroll",hide,true);
+  document.addEventListener("click",hide);
+})();
 
 boot();
 </script>
