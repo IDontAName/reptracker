@@ -208,6 +208,20 @@ textarea.notes.big{min-height:60vh}
 .mod-row input{width:70px;text-align:center;font-family:'Cinzel',serif}
 .mod-net{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px;margin:6px 0 12px;font-size:.88rem}
 .mod-net b{font-family:'Cinzel',serif}
+.mod-queue{border:1px solid var(--edge);border-radius:var(--rad);padding:6px 10px;margin-bottom:8px;max-height:220px;overflow:auto}
+.mod-q{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;border-bottom:1px dotted var(--edge)}
+.mod-q:last-child{border-bottom:0}
+.mod-q b{min-width:110px;font-weight:600}
+.mod-q-amt{font-family:'Cinzel',serif;min-width:34px;font-weight:700}
+.mod-bd{font-size:.86rem;color:var(--txt-dim)}
+.mod-empty{color:var(--txt-dim);font-style:italic;font-size:.9rem;padding:4px 0}
+.mod-actions{display:flex;justify-content:flex-end;gap:8px;margin:6px 0 4px}
+.mod-actions .mini-btn:disabled{opacity:.45;cursor:default}
+.mod-confirm,.mod-result{border:1px solid var(--gold-dim);border-radius:var(--rad);padding:10px 12px;margin:4px 0 8px;background:rgba(201,168,90,.05)}
+.mod-sub{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);margin:12px 0 4px}
+.mod-sub span{text-transform:none;letter-spacing:0;font-family:inherit;color:var(--txt-dim);font-size:.8rem}
+.mod-log .mod-bstart{border-top:1px dotted var(--edge);margin-top:3px;padding-top:4px}
+.mod-log .mod-bstart:first-child{border-top:0;margin-top:0}
 .mod-log{max-height:220px;overflow:auto;border-top:1px dotted var(--edge);padding-top:6px;font-size:.84rem;color:var(--txt-dim)}
 .mod-log div{padding:2px 0}
 .acct-new{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;margin-top:14px}
@@ -346,7 +360,7 @@ $("loginForm").addEventListener("submit",async e=>{
 function logoutLocal(){
   TOKEN=null;ME=null;PREVIEW=null;lsSet(TOKEN_KEY,null);stopPolling();closeSide();
   // Wipe the previous user's data and view so the next person on this browser never sees it.
-  stateSeq++;STATE.npcs=[];STATE.scores={};STATE.notes={};STATE.settings={};
+  stateSeq++;STATE.npcs=[];STATE.scores={};STATE.notes={};STATE.settings={};MOD_QUEUE=[];
   $("main").innerHTML='<div class="spinner"></div>';$("sideInner").innerHTML="";
   F.q="";$("fQ").value="";$("previewBanner").classList.remove("on");$("previewSel").value="";
   $("app").style.display="none";$("loginScreen").style.display="flex";
@@ -700,41 +714,98 @@ $("btnExport").onclick=async()=>{
 };
 
 /* ---------- Basgiath modifier ---------- */
+// Queued changes survive closing the window (cleared on logout). Each item: {id, name, delta}.
+var MOD_QUEUE=[];
+const fmtD=v=>(v>0?"+":v<0?"−":"")+Math.abs(v);
+function fmtBreakdown(b){
+  if(!b)return"";
+  return Object.keys(b).map(Number).sort((x,y)=>Math.abs(y)-Math.abs(x)||y-x)
+    .map(k=>`<span style="color:${repColor(k)}">${k===0?"0":fmtD(k)}</span>&nbsp;×${b[k]}`).join(", ");
+}
 async function openModifier(){
   openModal(`<h3>Basgiath modifier</h3>
-    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:12px">Adds to one player's standing with every living Basgiath NPC (cadets and staff). Deceased NPCs are skipped. Standings stay within −20 to +20, so an NPC already at the limit won't move.</p>
-    <div class="mod-row"><select id="modPlayer" aria-label="Player"></select>
-      <button class="nt" id="modMinus" data-tip="−1">−</button><input id="modDelta" value="-1" inputmode="numeric" aria-label="Amount"><button class="nt" id="modPlus" data-tip="+1">+</button>
-      <button class="mini-btn go" id="modApply">Apply</button></div>
+    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:12px">Queue changes for one or more players, then apply them together. Each +1 or −1 step reaches a random 80% of living Basgiath NPCs (cadets and staff), rolled separately for every NPC, so +2 gives most NPCs +2, some +1 and a few 0. Deceased NPCs are skipped. Standings stay within −20 to +20.</p>
+    <div id="modEdit">
+      <div class="mod-row"><select id="modPlayer" aria-label="Player"></select>
+        <button class="nt" id="modMinus" data-tip="−1">−</button><input id="modDelta" value="1" inputmode="numeric" aria-label="Amount"><button class="nt" id="modPlus" data-tip="+1">+</button>
+        <button class="mini-btn" id="modAdd" data-tip="Add to the batch. Adding the same player again combines the amounts.">Add to batch</button></div>
+      <div class="mod-queue" id="modQueue"></div>
+      <div class="mod-actions"><button class="mini-btn" id="modClear">Clear batch</button><button class="mini-btn go" id="modReview">Review batch</button></div>
+    </div>
+    <div class="mod-confirm" id="modConfirm" hidden></div>
+    <div class="mod-result" id="modResult" hidden></div>
+    <div class="mod-sub">Net modifier per player <span>(amounts set, before the 80% roll)</span></div>
     <div class="mod-net" id="modNet"></div>
+    <div class="mod-sub">Log</div>
     <div class="mod-log" id="modLog"><div class="spinner"></div></div>
     <div class="modal-foot"><span class="err" id="modErr"></span><button class="mini-btn" id="modClose">Close</button></div>`);
   $("modClose").onclick=closeModal;
   onModalClose=async()=>{if(PREVIEW)await refreshState();else if(selectedId)openSide(selectedId);};
+  const err=t=>{$("modErr").textContent=t||"";};
   let accts=[];
-  try{accts=(await api("list_accounts")).accounts.filter(a=>!a.is_dm);}catch(e){$("modErr").textContent=e.message;return;}
+  try{accts=(await api("list_accounts")).accounts.filter(a=>!a.is_dm);}catch(e){err(e.message);return;}
   const names={};accts.forEach(a=>names[a.id]=a.character_name);
+  MOD_QUEUE=MOD_QUEUE.filter(q=>names[q.id]);          // drop players deleted since queuing
   $("modPlayer").innerHTML=accts.map(a=>`<option value="${a.id}">${esc(a.character_name)}</option>`).join("");
   const d=$("modDelta"),clampD=v=>{v=parseInt(v)||0;return Math.max(-20,Math.min(20,v));};
   $("modMinus").onclick=()=>{d.value=clampD(d.value)-1;};
   $("modPlus").onclick=()=>{d.value=clampD(d.value)+1;};
+  const renderQueue=()=>{
+    $("modQueue").innerHTML=MOD_QUEUE.length?MOD_QUEUE.map((q,i)=>`<div class="mod-q"><b>${esc(q.name)}</b>
+        <span class="mod-q-amt" style="color:${repColor(q.delta)}">${fmtD(q.delta)}</span>
+        <button class="nt" data-i="${i}" data-step="-1" aria-label="Lower">−</button><button class="nt" data-i="${i}" data-step="1" aria-label="Raise">+</button>
+        <button class="nt" data-i="${i}" data-rm="1" data-tip="Remove from batch">✕</button></div>`).join("")
+      :'<div class="mod-empty">Nothing queued yet.</div>';
+    $("modReview").textContent=`Review batch (${MOD_QUEUE.length})`;
+    $("modReview").disabled=$("modClear").disabled=!MOD_QUEUE.length;
+    $("modQueue").querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.i;
+      if(b.dataset.rm)MOD_QUEUE.splice(i,1);
+      else{MOD_QUEUE[i].delta=clampD(MOD_QUEUE[i].delta+ +b.dataset.step);if(!MOD_QUEUE[i].delta)MOD_QUEUE.splice(i,1);}
+      renderQueue();
+    });
+  };
+  $("modAdd").onclick=()=>{
+    err();const delta=clampD(d.value),id=$("modPlayer").value;
+    if(!delta){err("Choose an amount other than 0");return;}
+    const q=MOD_QUEUE.find(x=>x.id===id);
+    if(q){q.delta=clampD(q.delta+delta);if(!q.delta)MOD_QUEUE.splice(MOD_QUEUE.indexOf(q),1);}
+    else MOD_QUEUE.push({id,name:names[id],delta});
+    $("modResult").hidden=true;renderQueue();
+  };
+  $("modClear").onclick=()=>{MOD_QUEUE=[];renderQueue();};
   const loadLog=async()=>{
     let r;try{r=await api("modifier_log");}catch(e){$("modLog").textContent=e.message;return;}
     const net={};r.log.forEach(x=>net[x.account_id]=(net[x.account_id]||0)+x.delta);
     $("modNet").innerHTML=accts.map(a=>{const v=net[a.id]||0;return `<span>${esc(a.character_name)}: <b style="color:${repColor(v)}">${v>0?"+":""}${v}</b></span>`;}).join("");
-    $("modLog").innerHTML=r.log.length?r.log.map(x=>`<div>${esc(fmtTime(x.applied_at))} · <b>${esc(names[x.account_id]||"?")}</b> ${x.delta>0?"+":""}${x.delta} on ${x.npcs_changed} NPCs</div>`).join("")
+    let prev=null;
+    $("modLog").innerHTML=r.log.length?r.log.map(x=>{
+      const start=!x.batch_id||x.batch_id!==prev;prev=x.batch_id;
+      const detail=x.breakdown?`: ${fmtBreakdown(x.breakdown)}`:` on ${x.npcs_changed} NPCs (before the 80% roll)`;
+      return `<div class="${start?"mod-bstart":""}">${esc(fmtTime(x.applied_at))} · <b>${esc(names[x.account_id]||"?")}</b> ${fmtD(x.delta)}${detail}</div>`;}).join("")
       :'<div>No modifiers applied yet.</div>';
   };
-  loadLog();
-  const apply=$("modApply");
-  apply.onclick=async()=>{
-    const delta=clampD(d.value),name=$("modPlayer").selectedOptions[0]?.textContent;
-    if(!delta){$("modErr").textContent="Choose an amount other than 0";return;}
-    if(apply.dataset.armed!=="1"){apply.dataset.armed="1";apply.textContent=`Confirm ${delta>0?"+":""}${delta} for ${name}?`;setTimeout(()=>{apply.dataset.armed="";apply.textContent="Apply";},4000);return;}
-    apply.dataset.armed="";apply.textContent="Apply";$("modErr").textContent="";
-    try{const r=await api("group_modifier",{target_account_id:$("modPlayer").value,delta});toast(`${name}: ${delta>0?"+":""}${delta} on ${r.npcs_changed} Basgiath NPCs`);loadLog();}
-    catch(e){$("modErr").textContent=e.message;}
+  const showEdit=on=>{$("modEdit").hidden=!on;$("modConfirm").hidden=on;};
+  $("modReview").onclick=()=>{
+    if(!MOD_QUEUE.length)return;err();
+    $("modConfirm").innerHTML=`<div class="mod-sub" style="margin-top:0">Apply ${MOD_QUEUE.length} change${MOD_QUEUE.length>1?"s":""} to Basgiath standings?</div>
+      ${MOD_QUEUE.map(q=>`<div class="mod-q"><b>${esc(q.name)}</b><span class="mod-q-amt" style="color:${repColor(q.delta)}">${fmtD(q.delta)}</span></div>`).join("")}
+      <div class="mod-actions"><button class="mini-btn" id="modBack">Back</button><button class="mini-btn go" id="modGo">Confirm and apply</button></div>`;
+    showEdit(false);
+    $("modBack").onclick=()=>showEdit(true);
+    $("modGo").onclick=async()=>{
+      const go=$("modGo");go.disabled=$("modBack").disabled=true;go.textContent="Applying…";
+      try{
+        const r=await api("group_modifier_batch",{items:MOD_QUEUE.map(q=>({target_account_id:q.id,delta:q.delta}))});
+        $("modResult").innerHTML=`<div class="mod-sub" style="margin-top:0">Applied</div>`+r.results.map(x=>
+          `<div class="mod-q"><b>${esc(names[x.account_id]||"?")}</b><span class="mod-q-amt" style="color:${repColor(x.delta)}">${fmtD(x.delta)}</span><span class="mod-bd">${fmtBreakdown(x.breakdown)}</span></div>`).join("");
+        $("modResult").hidden=false;
+        toast(`Applied ${r.results.length} Basgiath modifier${r.results.length>1?"s":""}`);
+        MOD_QUEUE=[];renderQueue();showEdit(true);loadLog();
+      }catch(e){err(e.message+" (nothing was applied)");go.disabled=$("modBack").disabled=false;go.textContent="Confirm and apply";}
+    };
   };
+  renderQueue();loadLog();
 }
 $("btnMod").onclick=openModifier;
 
