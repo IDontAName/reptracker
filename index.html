@@ -772,7 +772,7 @@ function fmtBreakdown(b){
 async function openModifier(){
   $("modal").classList.add("wide");
   openModal(`<h3>Basgiath modifier</h3>
-    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:10px">Click − / + next to players (or a whole group) to queue changes, then review and apply them together. Each +1 or −1 step reaches a random 80% of living Basgiath NPCs (cadets and staff), so +2 gives most NPCs +2, some +1 and a few 0. Deceased NPCs are skipped; standings stay within −20 to +20.</p>
+    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:10px">Click − / + next to players (or a whole group) to queue changes, then review and apply them together. Each +1 or −1 step reaches a random 80% of living Basgiath NPCs (cadets and staff), so +2 gives most NPCs +2, some +1 and a few 0. Deceased NPCs are skipped. Raises stop at <b>+8</b> (anyone already above +8 is left as is); lowering goes down to −20.</p>
     <div id="modEdit">
       <div id="modGrid"><div class="spinner"></div></div>
       <div class="mod-actions"><button class="mini-btn" id="modClear">Clear batch</button><button class="mini-btn go" id="modReview">Review batch</button></div>
@@ -836,7 +836,7 @@ async function openModifier(){
       try{
         const r=await api("group_modifier_batch",{items:ordered.map(q=>({target_account_id:q.id,delta:q.delta}))});
         $("modResult").innerHTML=`<div class="mod-sub" style="margin-top:0">Applied</div>`+r.results.map(x=>
-          `<div class="mod-q"><b>${esc(names[x.account_id]||"?")}</b><span class="mod-q-amt" style="color:${repColor(x.delta)}">${fmtD(x.delta)}</span><span class="mod-bd">${fmtBreakdown(x.breakdown)}</span></div>`).join("");
+          `<div class="mod-q"><b>${esc(names[x.account_id]||"?")}</b><span class="mod-q-amt" style="color:${repColor(x.delta)}">${fmtD(x.delta)}</span><span class="mod-bd">${fmtBreakdown(x.breakdown)}${x.npcs_capped?` · ${x.npcs_capped} held at the +8 cap`:""}</span></div>`).join("");
         $("modResult").hidden=false;
         toast(`Applied ${r.results.length} Basgiath modifier${r.results.length>1?"s":""}`);
         MOD_QUEUE=[];showEdit(true);loadLog();
