@@ -114,7 +114,11 @@ select.topbtn{background:var(--ink2);padding:5px 8px}
 .side-inner::-webkit-scrollbar,.modal-bg::-webkit-scrollbar{width:8px}
 .side-inner::-webkit-scrollbar-thumb,.modal-bg::-webkit-scrollbar-thumb{background:var(--edge2);border-radius:4px}
 .card .pos{font-size:.7rem;color:var(--txt-faint);margin-top:2px}
-.card .dmn{position:absolute;top:8px;right:10px;color:var(--gold-dim);font-size:.7rem}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.card-head .nm{padding-right:0;min-width:0}
+.card .badges{display:flex;gap:4px;flex-shrink:0;margin-top:1px}
+.card .dmn,.card .mynote{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;line-height:1;padding:3px 6px;border-radius:3px;border:1px solid var(--edge2);color:var(--gold-dim);background:rgba(0,0,0,.18);white-space:nowrap}
+.card .mynote{color:var(--gold);border-color:rgba(201,162,75,.35)}
 .rep{margin-top:9px}
 .rep-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .rep-lbl{font-size:.56rem;text-transform:uppercase;letter-spacing:.11em;color:var(--gold-dim);font-family:'Cinzel',serif}
@@ -195,7 +199,6 @@ textarea.notes.big{min-height:60vh}
 .pn-h{display:flex;justify-content:space-between;gap:8px;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.06em;color:var(--gold);margin-bottom:5px}
 .pn-h span:last-child{font-family:'EB Garamond',serif;font-style:italic;letter-spacing:0;color:var(--txt-faint);font-size:.78rem}
 .pn-body{max-height:none}
-.card .mynote{position:absolute;bottom:8px;right:10px;color:var(--gold-dim);font-size:.72rem}
 .modal{width:min(560px,100%);background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--edge2);border-radius:8px;box-shadow:var(--shadow);padding:22px 22px 18px}
 .modal h3{color:var(--gold);font-size:1.05rem;margin-bottom:14px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
@@ -473,7 +476,7 @@ function filtered(){
   let list=STATE.npcs.slice();
   if(F.group)list=list.filter(n=>(n.grp||"Unaffiliated")===F.group);
   if(F.hideDead)list=list.filter(n=>!n.deceased);
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.power,n.year&&("year "+n.year),!viewingAsDM()&&STATE.notes[n.id]&&STATE.notes[n.id].body].some(v=>v&&String(v).toLowerCase().includes(q)));}
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(n=>[n.name,n.role,n.grp,n.subgroup,n.signet,n.second_signet,n.power,n.year&&("year "+n.year),STATE.notes[n.id]&&STATE.notes[n.id].body].some(v=>v&&String(v).toLowerCase().includes(q)));}
   if(F.sort==="name")list.sort((a,b)=>a.name.localeCompare(b.name));
   else if(F.sort==="rep_hi")list.sort((a,b)=>repOf(b.id)-repOf(a.id)||a.sort_order-b.sort_order);
   else if(F.sort==="rep_lo")list.sort((a,b)=>repOf(a.id)-repOf(b.id)||a.sort_order-b.sort_order);
@@ -482,13 +485,12 @@ function filtered(){
 }
 
 /* ---------- render ---------- */
+function hasNote(id){const x=STATE.notes[id];return !!(x&&x.body&&x.body.trim());}
 function cardHTML(n,showPos){
   const v=repOf(n.id),pos=showPos?posText(n):"";
   const accent=v>0?"var(--pos)":v<0?"var(--blood-bright)":"transparent";
   return `<div class="card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}" role="button" tabindex="0" style="--accent:${accent}">
-    ${viewingAsDM()&&n.public_note?'<span class="dmn" data-tip="Has a note from the DM">✎</span>':''}
-    ${!viewingAsDM()&&STATE.notes[n.id]&&STATE.notes[n.id].body&&STATE.notes[n.id].body.trim()?`<span class="mynote" data-tip="${PREVIEW?"This player has notes on this NPC":"You have notes on this NPC"}">✎ notes</span>`:''}
-    <div class="nm">${esc(n.name)}</div>${roleHTML(n,"role")}
+    <div class="card-head"><div class="nm">${esc(n.name)}</div><span class="badges">${viewingAsDM()&&n.public_note?'<span class="dmn" data-tip="Has a note from the DM (players can see it)">DM note</span>':''}${hasNote(n.id)?`<span class="mynote" data-tip="${PREVIEW?"This player has notes on this NPC":"You have notes on this NPC"}">✎ Notes</span>`:''}</span></div>${roleHTML(n,"role")}
     ${pos?`<div class="pos">${esc(pos)}</div>`:''}
     ${repBlock(v)}</div>`;
 }
@@ -541,12 +543,13 @@ function openSide(id){
     <div class="side-sep"></div>
     ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v ${r[1]==="CLASSIFIED"?'classified':r[1]==="Unknown"?'unknown':''}" ${r[1]==="CLASSIFIED"?'data-tip="This signet is classified"':r[1]==="Unknown"?'data-tip="Not known"':r[0]==="Year"?`data-tip="Year ${esc(r[1])} cadet"`:''}>${esc(r[1])}</span></div>`).join("")}${fyNote}
     ${n.public_note?`<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`:''}`;
-  if(viewingAsDM())html+=dmBoxHTML(n);
+  if(viewingAsDM())html+=dmBoxHTML(n)+`<div class="notes-h"><span>Your Private Notes</span></div>${noteEditorHTML("s",false,false)}`;
   else html+=`<div class="notes-h"><span>${PREVIEW?esc(PREVIEW.name)+"'s Notes":"Your Private Notes"}</span></div>${noteEditorHTML("s",!!PREVIEW,false)}`;
   $("sideInner").innerHTML=html;
   $("side").classList.add("open");
   $("sideClose").onclick=closeSide;
-  if(viewingAsDM())wireDmBox(n);else wireNoteEditor(n,"s",!!PREVIEW);
+  if(viewingAsDM())wireDmBox(n);
+  wireNoteEditor(n,"s",!!PREVIEW);
 }
 function closeSide(){$("side").classList.remove("open");selectedId=null;document.querySelectorAll(".card.sel").forEach(c=>c.classList.remove("sel"));}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("modalBg").classList.contains("open"))closeModal();else closeSide();}});
@@ -741,6 +744,7 @@ async function loadPreviewList(){
 }
 $("previewSel").addEventListener("change",async e=>{
   const id=e.target.value;if(!id)return exitPreview();
+  if(!PREVIEW)await flushAllNotes();
   PREVIEW={id,name:e.target.selectedOptions[0].textContent};
   $("previewText").textContent="Previewing as "+PREVIEW.name+" — read-only";
   $("previewBanner").classList.add("on");
@@ -772,7 +776,7 @@ function fmtBreakdown(b){
 async function openModifier(){
   $("modal").classList.add("wide");
   openModal(`<h3>Basgiath modifier</h3>
-    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:10px">Click − / + next to players (or a whole group) to queue changes, then review and apply them together. Each +1 or −1 step reaches a random 80% of living Basgiath NPCs (cadets and staff), so +2 gives most NPCs +2, some +1 and a few 0. Deceased NPCs are skipped; standings stay within −20 to +20.</p>
+    <p style="color:var(--parch-dim);font-size:.9rem;margin-bottom:10px">Click − / + next to players (or a whole group) to queue changes, then review and apply them together. Each +1 or −1 step reaches a random 80% of living Basgiath NPCs (cadets and staff), so +2 gives most NPCs +2, some +1 and a few 0. Deceased NPCs are skipped. Raises stop at <b>+8</b> (anyone already above +8 is left as is); lowering goes down to −20.</p>
     <div id="modEdit">
       <div id="modGrid"><div class="spinner"></div></div>
       <div class="mod-actions"><button class="mini-btn" id="modClear">Clear batch</button><button class="mini-btn go" id="modReview">Review batch</button></div>
@@ -836,7 +840,7 @@ async function openModifier(){
       try{
         const r=await api("group_modifier_batch",{items:ordered.map(q=>({target_account_id:q.id,delta:q.delta}))});
         $("modResult").innerHTML=`<div class="mod-sub" style="margin-top:0">Applied</div>`+r.results.map(x=>
-          `<div class="mod-q"><b>${esc(names[x.account_id]||"?")}</b><span class="mod-q-amt" style="color:${repColor(x.delta)}">${fmtD(x.delta)}</span><span class="mod-bd">${fmtBreakdown(x.breakdown)}</span></div>`).join("");
+          `<div class="mod-q"><b>${esc(names[x.account_id]||"?")}</b><span class="mod-q-amt" style="color:${repColor(x.delta)}">${fmtD(x.delta)}</span><span class="mod-bd">${fmtBreakdown(x.breakdown)}${x.npcs_capped?` · ${x.npcs_capped} held at the +8 cap`:""}</span></div>`).join("");
         $("modResult").hidden=false;
         toast(`Applied ${r.results.length} Basgiath modifier${r.results.length>1?"s":""}`);
         MOD_QUEUE=[];showEdit(true);loadLog();
@@ -931,7 +935,7 @@ function setNoteStatus(id,kind,extra){
 }
 function queueNoteSave(id,body,style){
   setDraft(id,{body,style,ts:Date.now()});
-  STATE.notes[id]={...(STATE.notes[id]||{}),body,style};
+  if(!PREVIEW)STATE.notes[id]={...(STATE.notes[id]||{}),body,style};
   setNoteStatus(id,"saving");
   clearTimeout(noteTimers[id]);noteTimers[id]=setTimeout(()=>flushNote(id),1000);
 }
@@ -944,7 +948,7 @@ async function flushNote(id){
     const r=await api("set_note",{npc_id:id,body:d.body,style:d.style});
     const cur=getDraft(id);
     if(cur&&cur.ts===d.ts)setDraft(id,null);           // only clear if nothing newer was typed meanwhile
-    STATE.notes[id]={body:d.body,style:d.style,updated_at:r.updated_at};
+    if(!PREVIEW)STATE.notes[id]={body:d.body,style:d.style,updated_at:r.updated_at};
     if(!getDraft(id))setNoteStatus(id,"saved",r.updated_at);
     ok=true;
   }catch(e){
@@ -972,10 +976,10 @@ function mergeLocalDrafts(){
   if(ids.length)flushAllNotes();
 }
 function refreshNoteMarker(id){
-  const card=document.querySelector(`.card[data-id="${id}"]`);if(!card)return;
-  const has=!!(STATE.notes[id]&&STATE.notes[id].body&&STATE.notes[id].body.trim());
+  const card=document.querySelector(`.card[data-id="${id}"]`);if(!card||PREVIEW)return;
+  const has=hasNote(id),b=card.querySelector(".badges");
   let m=card.querySelector(".mynote");
-  if(has&&!m){card.insertAdjacentHTML("beforeend",'<span class="mynote" data-tip="You have notes on this NPC">✎ notes</span>');}
+  if(has&&!m&&b){b.insertAdjacentHTML("beforeend",'<span class="mynote" data-tip="You have notes on this NPC">✎ Notes</span>');}
   else if(!has&&m)m.remove();
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushAllNotes();});
@@ -1001,7 +1005,7 @@ function noteEditorHTML(p,readOnly,big){
     <button class="nt" id="${p}History" data-tip="Earlier saved versions (restore anything)">⟲</button>
     ${big?`<button class="nt" id="${p}Download" data-tip="Download this note as a .txt file">⤓</button>`:`<button class="nt grow" id="${p}Expand" data-tip="Open in a large editor">⤢</button>`}
   </div>`;
-  return `${tools}<textarea class="notes ${big?"big":""}" id="${p}Area" maxlength="${NOTE_MAX}" ${readOnly?"readonly":""} placeholder="${readOnly?"No notes.":"Only you (and the DM) can see these…"}" spellcheck="true"></textarea>
+  return `${tools}<textarea class="notes ${big?"big":""}" id="${p}Area" maxlength="${NOTE_MAX}" ${readOnly?"readonly":""} placeholder="${readOnly?"No notes.":ME&&ME.is_dm?"Only you can see these…":"Only you (and the DM) can see these…"}" spellcheck="true"></textarea>
     <div class="note-foot"><span class="st note-st" id="${p}St"></span><span id="${p}Count"></span></div>`;
 }
 function wireNoteEditor(n,p,readOnly){
